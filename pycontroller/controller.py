@@ -2,21 +2,28 @@ import ast
 import inspect
 import warnings
 from functools import cmp_to_key
-from heapq import _heapify_max, heapify, nlargest, nsmallest
+from heapq import nlargest, nsmallest
 from textwrap import dedent
 from typing import Callable
 
 PARTITION_NAME = "partition"
 CHOSEN_NAME = "chosen"
-ABBREVIATED_FILTER_FN = "__f"
-ABBREVIATED_PREFERENCE_FN = "__p"
-ABBREVIATED_ACTION_FN = "__a"
+ABBREVIATED_FILTER_FN = "f"
+ABBREVIATED_PREFERENCE_FN = "p"
+ABBREVIATED_ACTION_FN = "a"
+CALL_METHOD_NAME = "_call_me_"
 
 
 class SignatureHelper:
     def __init__(self, fn: Callable) -> None:
-        self.spec = inspect.getfullargspec(fn)
+        if hasattr(fn, "__wrapped__"):
+            self.spec = inspect.getfullargspec(fn.__wrapped__)
+            self.is_wrapped = True
+        else:
+            self.spec = inspect.getfullargspec(fn)
+            self.is_wrapped = False
         self.has_explicit_return = SignatureHelper.fn_has_explicit_return(fn)
+        self.fn = fn
 
     @staticmethod
     def fn_has_explicit_return(f) -> bool:
@@ -31,6 +38,10 @@ class SignatureHelper:
             )
             has_return = True  # assume it returns
         return has_return
+
+    @property
+    def is_staticmethod(self) -> bool:
+        return isinstance(self.fn, staticmethod)
 
     @property
     def positional_args(self) -> list:
@@ -71,11 +82,12 @@ class SignatureHelper:
 
 class MetaController(type):
     name = None
-    no_input = False
+    no_partition = False
     return_generator = False
     max_chosen = None
     use_simple_sort = False
     reverse_sort = False
+    static_mode = False
     include_globals = {}
 
     def __init__(cls, name, bases, attrs):
@@ -92,18 +104,61 @@ class MetaController(type):
         if "action" in attrs:
             cls._has_action = True
             cls._action_arg_spec = SignatureHelper(attrs["action"])
+            required_length = 2
+            if cls.no_partition:
+                required_length -= 1
+            if cls._action_arg_spec.is_staticmethod:
+                required_length -= 1
+            cls._action_required_arg_length = required_length
 
         if "filter" in attrs:
             cls._has_filter = True
             cls._filter_arg_spec = SignatureHelper(attrs["filter"])
+            required_length = 2
+            if cls._filter_arg_spec.is_staticmethod:
+                required_length -= 1
+            cls._filter_required_arg_length = required_length
 
         if "preference" in attrs:
             cls._has_preference = True
             cls._preference_arg_spec = SignatureHelper(attrs["preference"])
+            required_length = 3
+            if cls._preference_arg_spec.is_staticmethod:
+                required_length -= 1
+            cls._preference_required_arg_length = required_length
 
+        MetaController.validate_attributes(cls, attrs)
         MetaController.validate_methods(cls, attrs)
         call_fn = MetaController.generate_call_method(cls)
-        cls.__call__ = call_fn
+        if cls.static_mode:
+            cls.__call__ = call_fn
+
+            def new(cls, *args, **kwargs):
+                return cls.__call__(cls, *args, **kwargs)
+
+            cls.__new__ = new
+        else:
+            cls.__call__ = call_fn
+
+    @staticmethod
+    def validate_attributes(cls: "MetaController", attrs: dict) -> None:
+        if cls.no_partition:
+            if cls.max_chosen is not None:
+                raise AttributeError(
+                    'Cannot have "no_partition" and "max_chosen" defined together.'
+                )
+            if cls.return_generator:
+                raise AttributeError(
+                    'Cannot have "no_partition" and "return_generator" defined together.'
+                )
+            if cls.use_simple_sort:
+                raise AttributeError(
+                    'Cannot have "no_partition" and "use_simple_sort" defined together.'
+                )
+            if cls.reverse_sort:
+                raise AttributeError(
+                    'Cannot have "no_partition" and "reverse_sort" defined together.'
+                )
 
     @staticmethod
     def validate_methods(cls: "MetaController", attrs: dict) -> None:
@@ -118,34 +173,41 @@ class MetaController(type):
             )
 
         if "action" in attrs:
-            required_length = 2
-            if cls.no_input:
-                required_length = 1
-            if len(cls._action_arg_spec.positional_args) < required_length:
+
+            if (
+                len(cls._action_arg_spec.positional_args)
+                < cls._action_required_arg_length
+            ):
                 raise TypeError(
                     '"action" requires a minimum of 2 arguments: "self" and "chosen".'
                 )
 
         if "filter" in attrs:
-            if cls.no_input:
-                raise ValueError('"filter" not supported in "no_input" mode.')
+            if cls.no_partition:
+                raise TypeError('"filter" not supported in "no_partition" mode.')
 
             if not cls._filter_arg_spec.has_explicit_return:
                 raise ValueError("filter requires a boolean return value.")
 
-            if len(cls._filter_arg_spec.positional_args) < 2:
+            if (
+                len(cls._filter_arg_spec.positional_args)
+                < cls._filter_required_arg_length
+            ):
                 raise TypeError(
                     '"filter" requires a minimum of 2 arguments: "self" and "chosen".'
                 )
 
         if "preference" in attrs:
-            if cls.no_input:
-                raise ValueError('"preference" not supported in "no_input" mode.')
+            if cls.no_partition:
+                raise TypeError('"preference" not supported in "no_partition" mode.')
 
             if not cls._preference_arg_spec.has_explicit_return:
                 raise ValueError("preference requires a boolean return value.")
 
-            if len(cls._preference_arg_spec.positional_args) < 3:
+            if (
+                len(cls._preference_arg_spec.positional_args)
+                < cls._preference_required_arg_length
+            ):
                 raise TypeError(
                     '"preference" requires a minimum of 2 arguments: "self", "a", and "b".'
                 )
@@ -154,36 +216,36 @@ class MetaController(type):
     def generate_call_method(cls: "MetaController") -> Callable:
 
         signature_args = ["self"]
-        if cls.no_input == False:
+        if cls.no_partition == False:
             signature_args.append(PARTITION_NAME)
 
-        # TODO: do something smarter with named positional arguments and keyword paramters
-        # since unpacking is slow
+        # TODO: do something smarter with positional arguments since unpacking is slow
         needs_args = False
         if cls._has_action:
-            _action_arg_requirement = 1 if cls.no_input else 2
             if (
-                len(cls._action_arg_spec.positional_args) != _action_arg_requirement
+                len(cls._action_arg_spec.positional_args)
+                != cls._action_required_arg_length
             ) or (cls._action_arg_spec.has_arg_unpack):
                 needs_args = True
 
         if cls._has_filter:
-            if (len(cls._filter_arg_spec.positional_args) != 2) or (
-                cls._filter_arg_spec.has_arg_unpack
-            ):
+            if (
+                len(cls._filter_arg_spec.positional_args)
+                != cls._filter_required_arg_length
+            ) or (cls._filter_arg_spec.has_arg_unpack):
                 needs_args = True
 
         if cls._has_preference:
-            if (len(cls._preference_arg_spec.positional_args) != 3) or (
-                cls._preference_arg_spec.has_arg_unpack
-            ):
+            if (
+                len(cls._preference_arg_spec.positional_args)
+                != cls._preference_required_arg_length
+            ) or (cls._preference_arg_spec.has_arg_unpack):
                 needs_args = True
 
         if needs_args:
             signature_args.append("*args")
 
-        # TODO: do something smarter with named positional arguments and keyword paramters
-        # since unpacking is slow
+        # TODO: do something smarter with named keyword arguments since unpacking is slow
         needs_kwargs = False
         if cls._has_action:
             if (cls._action_arg_spec.has_keyword_args) or (
@@ -209,7 +271,7 @@ class MetaController(type):
             signature_args.append("**kwargs")
 
         generated_call_str = ""
-        signature_str = f"def _call_me_({', '.join(signature_args)}):"
+        signature_str = f"def {CALL_METHOD_NAME}({', '.join(signature_args)}):"
 
         # check for the speedy happy path
         setup_statements = []
@@ -235,7 +297,7 @@ class MetaController(type):
 
             return_statement_str = ""
             if cls._has_action:
-                setup_statements.append("__a = self.action")
+                setup_statements.append(f"{ABBREVIATED_ACTION_FN} = self.action")
                 if cls._action_arg_spec.has_explicit_return:
                     return_statement_str = "return "
                     if cls.return_generator:
@@ -273,7 +335,17 @@ class MetaController(type):
                     else:
                         return_statement_str = f"return {get_elements_str}"
         else:
-            raise NotImplementedError()
+            if cls.no_partition:
+                action_args = signature_args[1:]
+
+                if cls._action_arg_spec.has_explicit_return:
+                    return_statement_str = (
+                        f"return self.action({', '.join(action_args)})"
+                    )
+                else:
+                    return_statement_str = f"self.action({', '.join(action_args)})"
+            else:
+                raise NotImplementedError()
 
         generated_call_str += (
             signature_str
@@ -284,7 +356,7 @@ class MetaController(type):
         )
         cls._generated_call = generated_call_str
         compiled_namespace = cls._compile_fn(generated_call_str, cls.include_globals)
-        return compiled_namespace["_call_me_"]
+        return compiled_namespace[CALL_METHOD_NAME]
 
     def _compile_fn(cls, code_string: str, _globals: dict = None) -> dict:
         """NOTE: THIS SEEMS INCREDIBLY DANGEROUS TO HAVE A FUNCTION COMPILING ARBITRARY CODE.
@@ -299,9 +371,8 @@ class MetaController(type):
         """
         if _globals is None:
             _globals = dict()
-        _globals["heapify"] = heapify
-        _globals["cmp_to_key"] = cmp_to_key
-        ns = {}
+        _locals = {}
+        _locals["cmp_to_key"] = cmp_to_key
         eval(
             compile(
                 code_string,
@@ -309,9 +380,9 @@ class MetaController(type):
                 "exec",
             ),
             _globals,
-            ns,
+            _locals,
         )
-        return ns
+        return _locals
 
 
 class Controller(metaclass=MetaController): ...
@@ -324,19 +395,24 @@ if __name__ == "__main__":
 
     class TestController(Controller):
         counter = 0
-        return_generator = True
+        # return_generator = True
+        # static_mode = True
 
-        def action(self, chosen: int) -> tuple:
-            self.counter += 1
-            return chosen, self.counter
+        @staticmethod
+        def action(chosen: int) -> tuple:
+            # self.counter += 1
+            return chosen  # , self.counter
 
-        def filter(self, chosen: int) -> bool:
+        @staticmethod
+        def filter(chosen: int) -> bool:
             return chosen % 2 == 0
 
-        def preference(self, a: int, b: int) -> int:
+        @staticmethod
+        def preference(a: int, b: int) -> int:
             return -1 if a < b else 1 if a > b else 0
 
     elements = (random.randint(0, 100000) for _ in range(1000))
     tst = TestController()
+    # result = TestController(elements)
     result = tst(elements)
     pass

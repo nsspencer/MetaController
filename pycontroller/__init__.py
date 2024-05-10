@@ -1,1 +1,1 @@
-from .base_controller import *
+from .controller import Controller
