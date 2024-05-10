@@ -178,9 +178,16 @@ class MetaController(type):
                 len(cls._action_arg_spec.positional_args)
                 < cls._action_required_arg_length
             ):
-                raise TypeError(
-                    '"action" requires a minimum of 2 arguments: "self" and "chosen".'
-                )
+                if cls._action_required_arg_length == 2:
+                    raise TypeError(
+                        '"action" requires a minimum of 2 arguments: "self" and "chosen".'
+                    )
+                elif cls.no_partition:
+                    raise TypeError(
+                        '"action" requires a minimum of 1 argument: "chosen".'
+                    )
+                else:
+                    raise TypeError('"action" requires a minimum of 1 argument.')
 
         if "filter" in attrs:
             if cls.no_partition:
@@ -193,9 +200,14 @@ class MetaController(type):
                 len(cls._filter_arg_spec.positional_args)
                 < cls._filter_required_arg_length
             ):
-                raise TypeError(
-                    '"filter" requires a minimum of 2 arguments: "self" and "chosen".'
-                )
+                if cls._filter_required_arg_length == 2:
+                    raise TypeError(
+                        '"filter" requires a minimum of 2 arguments: "self" and "chosen".'
+                    )
+                else:
+                    raise TypeError(
+                        '"filter" requires a minimum of 1 arguments: "chosen".'
+                    )
 
         if "preference" in attrs:
             if cls.no_partition:
@@ -208,9 +220,14 @@ class MetaController(type):
                 len(cls._preference_arg_spec.positional_args)
                 < cls._preference_required_arg_length
             ):
-                raise TypeError(
-                    '"preference" requires a minimum of 2 arguments: "self", "a", and "b".'
-                )
+                if cls._preference_required_arg_length == 3:
+                    raise TypeError(
+                        '"preference" requires a minimum of 3 arguments: "self", "a", and "b".'
+                    )
+                else:
+                    raise TypeError(
+                        '"preference" requires a minimum of 2 arguments: "a", and "b".'
+                    )
 
     @staticmethod
     def generate_call_method(cls: "MetaController") -> Callable:
