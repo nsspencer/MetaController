@@ -384,6 +384,7 @@ class MetaController(type):
         compiled_namespace = cls._compile_fn(generated_call_str, cls.include_globals)
         return compiled_namespace[CALL_METHOD_NAME]
 
+    @classmethod
     def _compile_fn(cls, code_string: str, _globals: dict = None) -> dict:
         """NOTE: THIS SEEMS INCREDIBLY DANGEROUS TO HAVE A FUNCTION COMPILING ARBITRARY CODE.
         TODO: Lock this function away so it's not accessible outside this metaclass.

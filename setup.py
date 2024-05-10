@@ -14,5 +14,8 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    extras_require={
+        "test": ["pytest ~= 7.0", "coverage ~= 6.0", "black >= 21.8b"],
+    },
     zip_safe=True,
 )
