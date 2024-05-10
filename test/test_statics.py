@@ -17,6 +17,9 @@ class Value:
     val: Any
 
 
+elements = [random.randint(0, 100000) for _ in range(1000)]
+
+
 class NoPartitionStaticsTests(unittest.TestCase):
     def test_no_return_static_action(self):
         class Test(Controller):
@@ -69,25 +72,118 @@ class NoPartitionStaticsTests(unittest.TestCase):
 
 class ValidStaticMethodTests(unittest.TestCase):
     def test_static_action_return(self):
-        self.fail()
+        class Test(Controller):
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+        inst = Test()
+        self.assertTrue(len(inst(elements)) == len(elements))
 
     def test_static_action_no_return(self):
-        self.fail()
+        class Test(Controller):
+            @staticmethod
+            def action(chosen):
+                chosen.val += 1
+
+        local_elements = [Value(i) for i in range(1000)]
+        original_sum = sum([i.val for i in local_elements])
+        inst = Test()
+        inst(local_elements)
+        new_sum = sum([i.val for i in local_elements])
+        self.assertTrue(new_sum == original_sum + len(local_elements))
 
     def test_static_action_member_others(self):
-        self.fail()
+        class Test(Controller):
+            @staticmethod
+            def action(chosen):
+                chosen.val = -1
+
+            def filter(self, chosen: Value):
+                return chosen.val % 2 == 0
+
+            def preference(self, a, b):
+                return -1 if a.val < b.val else 1 if a.val > b.val else 0
+
+        local_vals = [Value(i) for i in range(1000)]
+        answer = sum([-1 for i in local_vals if i.val % 2 == 0])
+        inst = Test()
+        inst(local_vals)
+        found_answer = sum([i.val for i in local_vals if i.val == -1])
+        self.assertTrue(answer == found_answer)
 
     def test_static_filter_member_others(self):
-        self.fail()
+        class Test(Controller):
+            def action(self, chosen):
+                return chosen
+
+            @staticmethod
+            def filter(chosen):
+                return chosen % 2 == 0
+
+            def preference(self, a, b):
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = Test()
+        expected_answer = sum([i for i in elements if i % 2 == 0])
+        self.assertTrue(sum(inst(elements)) == expected_answer)
 
     def test_static_preference_member_others(self):
-        self.fail()
+        class Test(Controller):
+            def action(self, chosen):
+                return chosen
 
-    def test_static_all_return(self):
-        self.fail()
+            def filter(self, chosen):
+                return chosen % 2 == 0
+
+            @staticmethod
+            def preference(a, b):
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = Test()
+        expected_answer = sum([i for i in elements if i % 2 == 0])
+        self.assertTrue(sum(inst(elements)) == expected_answer)
 
     def test_static_all_no_return(self):
-        self.fail()
+        class Test(Controller):
+            @staticmethod
+            def action(chosen):
+                chosen.val = -1
+
+            @staticmethod
+            def filter(chosen: Value):
+                return chosen.val % 2 == 0
+
+            @staticmethod
+            def preference(a, b):
+                return -1 if a.val < b.val else 1 if a.val > b.val else 0
+
+        local_vals = [Value(i) for i in range(1000)]
+        answer = sum([-1 for i in local_vals if i.val % 2 == 0])
+        inst = Test()
+        inst(local_vals)
+        found_answer = sum([i.val for i in local_vals if i.val == -1])
+        self.assertEqual(answer, found_answer)
+
+    def test_static_all_return(self):
+        class Test(Controller):
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+            @staticmethod
+            def filter(chosen: Value):
+                return chosen.val % 2 == 0
+
+            @staticmethod
+            def preference(a, b):
+                return -1 if a.val < b.val else 1 if a.val > b.val else 0
+
+        local_vals = [Value(i) for i in range(1000)]
+        answer = sum([i.val for i in local_vals if i.val % 2 == 0])
+        inst = Test()
+        found_answer = sum([i.val for i in inst(local_vals)])
+        self.assertEqual(answer, found_answer)
 
 
 class InvalidStaticsTests(unittest.TestCase):

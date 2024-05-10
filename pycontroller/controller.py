@@ -164,6 +164,15 @@ class MetaController(type):
         if not isinstance(cls.include_globals, dict):
             raise AttributeError('"include_globals" must be a dictionary.')
 
+        if cls.max_chosen is not None:
+            if not isinstance(cls.max_chosen, int) or cls.max_chosen <= 0:
+                raise AttributeError('"max_chosen" must be a positive integer.')
+
+        if cls.reverse_sort and not cls._has_preference:
+            raise AttributeError(
+                'Cannot have "reverse_sort" without a preference defined.'
+            )
+
     @staticmethod
     def validate_methods(cls: "MetaController", attrs: dict) -> None:
         # make sure there is some action that was created
@@ -301,6 +310,7 @@ class MetaController(type):
         setup_statements = []
         if needs_args == False and needs_kwargs == False:
 
+            max_chosen_handled = False
             get_elements_str = PARTITION_NAME
             if cls._has_filter:
                 setup_statements.append(f"{ABBREVIATED_FILTER_FN} = self.filter")
@@ -308,17 +318,25 @@ class MetaController(type):
                     f"filter({ABBREVIATED_FILTER_FN}, " + get_elements_str + ")"
                 )
 
-            if cls._has_preference and cls.max_chosen is None:
+            if cls._has_preference:
                 setup_statements.append(
                     f"{ABBREVIATED_PREFERENCE_FN} = self.preference"
                 )
-                if cls.reverse_sort:
-                    get_elements_str = f"sorted({get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}), reverse=True)"
-                else:
-                    get_elements_str = f"sorted({get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}))"
+                if cls.max_chosen is None:
+                    if cls.reverse_sort:
+                        get_elements_str = f"sorted({get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}), reverse=True)"
+                    else:
+                        get_elements_str = f"sorted({get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}))"
 
-            elif cls._has_preference and cls.max_chosen is not None:
-                raise NotImplementedError()
+                else:
+                    max_chosen_handled = True
+                    if cls.reverse_sort:
+                        get_elements_str = f"nlargest({cls.max_chosen}, {get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}))"
+                    else:
+                        get_elements_str = f"nsmallest({cls.max_chosen}, {get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}))"
+
+            if cls.max_chosen and not max_chosen_handled:
+                get_elements_str = get_elements_str + f"[:{cls.max_chosen}]"
 
             return_statement_str = ""
             if cls._has_action:
@@ -399,7 +417,9 @@ class MetaController(type):
         if _globals is None:
             _globals = dict()
         _locals = {}
-        _locals["cmp_to_key"] = cmp_to_key
+        _globals["cmp_to_key"] = cmp_to_key
+        _globals["nlargest"] = nlargest
+        _globals["nsmallest"] = nsmallest
         eval(
             compile(
                 code_string,

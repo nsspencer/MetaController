@@ -70,6 +70,13 @@ elements = [random.randint(0, 100000) for _ in range(2_000_00)]
 # pass
 
 
+def preference(a, b) -> int:
+    return 1 if a < b else -1 if a > b else 0
+
+
+small5 = heapq.nsmallest(5, elements, key=functools.cmp_to_key(preference))
+
+
 def filter2(chosen, arg1):
     return chosen % arg1 == 0
 
