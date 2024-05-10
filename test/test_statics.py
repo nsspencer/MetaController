@@ -67,6 +67,29 @@ class NoPartitionStaticsTests(unittest.TestCase):
         self.assertTrue(Test(1) == 2)
 
 
+class ValidStaticMethodTests(unittest.TestCase):
+    def test_static_action_return(self):
+        self.fail()
+
+    def test_static_action_no_return(self):
+        self.fail()
+
+    def test_static_action_member_others(self):
+        self.fail()
+
+    def test_static_filter_member_others(self):
+        self.fail()
+
+    def test_static_preference_member_others(self):
+        self.fail()
+
+    def test_static_all_return(self):
+        self.fail()
+
+    def test_static_all_no_return(self):
+        self.fail()
+
+
 class InvalidStaticsTests(unittest.TestCase):
     def test_invalid_args_static_mode(self):
         class Test(Controller):

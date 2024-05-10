@@ -131,6 +131,7 @@ class MetaController(type):
         MetaController.validate_methods(cls, attrs)
         call_fn = MetaController.generate_call_method(cls)
         if cls.static_mode:
+            # TODO: This might be able to be improved for speed
             cls.__call__ = call_fn
 
             def new(cls, *args, **kwargs):
@@ -160,6 +161,9 @@ class MetaController(type):
                     'Cannot have "no_partition" and "reverse_sort" defined together.'
                 )
 
+        if not isinstance(cls.include_globals, dict):
+            raise AttributeError('"include_globals" must be a dictionary.')
+
     @staticmethod
     def validate_methods(cls: "MetaController", attrs: dict) -> None:
         # make sure there is some action that was created
@@ -173,7 +177,6 @@ class MetaController(type):
             )
 
         if "action" in attrs:
-
             if (
                 len(cls._action_arg_spec.positional_args)
                 < cls._action_required_arg_length
@@ -182,10 +185,12 @@ class MetaController(type):
                     raise TypeError(
                         '"action" requires a minimum of 2 arguments: "self" and "chosen".'
                     )
+
                 elif cls.no_partition:
                     raise TypeError(
                         '"action" requires a minimum of 1 argument: "chosen".'
                     )
+
                 else:
                     raise TypeError('"action" requires a minimum of 1 argument.')
 
@@ -204,6 +209,7 @@ class MetaController(type):
                     raise TypeError(
                         '"filter" requires a minimum of 2 arguments: "self" and "chosen".'
                     )
+
                 else:
                     raise TypeError(
                         '"filter" requires a minimum of 1 arguments: "chosen".'
@@ -224,6 +230,7 @@ class MetaController(type):
                     raise TypeError(
                         '"preference" requires a minimum of 3 arguments: "self", "a", and "b".'
                     )
+
                 else:
                     raise TypeError(
                         '"preference" requires a minimum of 2 arguments: "a", and "b".'
@@ -300,6 +307,7 @@ class MetaController(type):
                 get_elements_str = (
                     f"filter({ABBREVIATED_FILTER_FN}, " + get_elements_str + ")"
                 )
+
             if cls._has_preference and cls.max_chosen is None:
                 setup_statements.append(
                     f"{ABBREVIATED_PREFERENCE_FN} = self.preference"
@@ -351,6 +359,7 @@ class MetaController(type):
                         return_statement_str = f"return list({get_elements_str})"
                     else:
                         return_statement_str = f"return {get_elements_str}"
+
         else:
             if cls.no_partition:
                 action_args = signature_args[1:]
