@@ -185,6 +185,62 @@ class ValidStaticMethodTests(unittest.TestCase):
         found_answer = sum([i.val for i in inst(local_vals)])
         self.assertEqual(answer, found_answer)
 
+    def test_static_max_chosen(self):
+        class Test(Controller):
+            max_chosen = 1
+
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+        inst = Test()
+        self.assertEqual(len(inst(elements)), 1)
+
+    def test_static_max_chosen_with_preference(self):
+        class Test(Controller):
+            max_chosen = 1
+
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+            @staticmethod
+            def preference(a, b):
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = Test()
+        self.assertEqual(len(inst(elements)), 1)
+
+    def test_static_mode_max_chosen_with_preference(self):
+        class Test(Controller):
+            max_chosen = 1
+            static_mode = True
+
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+            @staticmethod
+            def preference(a, b):
+                return -1 if a < b else 1 if a > b else 0
+
+        self.assertEqual(len(Test(elements)), 1)
+
+    def test_static_mode_max_chosen_with_filter_out_of_bounds(self):
+        class Test(Controller):
+            max_chosen = len(elements) + 1000
+            static_mode = True
+
+            @staticmethod
+            def action(chosen):
+                return chosen
+
+            @staticmethod
+            def filter(chosen):
+                return True
+
+        self.assertEqual(len(Test(elements)), len(elements))
+
 
 class InvalidStaticsTests(unittest.TestCase):
     def test_invalid_args_static_mode(self):

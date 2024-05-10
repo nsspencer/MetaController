@@ -11,7 +11,8 @@ CHOSEN_NAME = "chosen"
 ABBREVIATED_FILTER_FN = "f"
 ABBREVIATED_PREFERENCE_FN = "p"
 ABBREVIATED_ACTION_FN = "a"
-CALL_METHOD_NAME = "_call_me_"
+CALL_METHOD_NAME = "call"
+DYNAMIC_MAX_CHOSEN_NAME = "n"
 
 
 class SignatureHelper:
@@ -85,6 +86,7 @@ class MetaController(type):
     no_partition = False
     return_generator = False
     max_chosen = None
+    use_dynamic_max_chosen = False
     use_simple_sort = False
     reverse_sort = False
     static_mode = False
@@ -131,13 +133,8 @@ class MetaController(type):
         MetaController.validate_methods(cls, attrs)
         call_fn = MetaController.generate_call_method(cls)
         if cls.static_mode:
-            # TODO: This might be able to be improved for speed
-            cls.__call__ = call_fn
-
-            def new(cls, *args, **kwargs):
-                return cls.__call__(cls, *args, **kwargs)
-
-            cls.__new__ = new
+            cls.__new__ = call_fn
+            cls.__init__ = call_fn
         else:
             cls.__call__ = call_fn
 
@@ -147,6 +144,10 @@ class MetaController(type):
             if cls.max_chosen is not None:
                 raise AttributeError(
                     'Cannot have "no_partition" and "max_chosen" defined together.'
+                )
+            if cls.use_dynamic_max_chosen:
+                raise AttributeError(
+                    'Cannot have "no_partition" and "use_dynamic_max_chosen" defined together.'
                 )
             if cls.return_generator:
                 raise AttributeError(
@@ -252,6 +253,9 @@ class MetaController(type):
         if cls.no_partition == False:
             signature_args.append(PARTITION_NAME)
 
+        if cls.use_dynamic_max_chosen:
+            signature_args.append(DYNAMIC_MAX_CHOSEN_NAME)
+
         # TODO: do something smarter with positional arguments since unpacking is slow
         needs_args = False
         if cls._has_action:
@@ -335,8 +339,13 @@ class MetaController(type):
                     else:
                         get_elements_str = f"nsmallest({cls.max_chosen}, {get_elements_str}, key=cmp_to_key({ABBREVIATED_PREFERENCE_FN}))"
 
-            if cls.max_chosen and not max_chosen_handled:
-                get_elements_str = get_elements_str + f"[:{cls.max_chosen}]"
+            if max_chosen_handled == False:
+                if cls.max_chosen:
+                    if cls._has_filter:
+                        get_elements_str = "list(" + get_elements_str + ")"
+                    else:
+                        get_elements_str = get_elements_str + f"[:{cls.max_chosen}]"
+                    max_chosen_handled = True
 
             return_statement_str = ""
             if cls._has_action:
