@@ -1,18 +1,30 @@
 import ast
 import inspect
 import warnings
+from enum import Enum
 from functools import cmp_to_key
 from heapq import nlargest, nsmallest
 from textwrap import dedent
-from typing import Callable
+from typing import Callable, List
 
 PARTITION_NAME = "partition"
 CHOSEN_NAME = "chosen"
-ABBREVIATED_FILTER_FN = "f"
-ABBREVIATED_PREFERENCE_FN = "p"
-ABBREVIATED_ACTION_FN = "a"
+ABBREVIATED_FILTER_FN = "filter_fn"
+ABBREVIATED_PREFERENCE_FN = "preference_fn"
+ABBREVIATED_ACTION_FN = "action_fn"
 CALL_METHOD_NAME = "call"
 DYNAMIC_MAX_CHOSEN_NAME = "n"
+
+PREFERENCE_FN_ARG0 = "a"
+PREFERENCE_FN_ARG1 = "b"
+
+ARG_UNPACK = "*args"
+KWARG_UNPACK = "**kwargs"
+
+ACTION_FN_NAME = "action"
+FILTER_FN_NAME = "filter"
+PREFERENCE_FN_NAME = "preference"
+CONTROLLED_METHODS = [ACTION_FN_NAME, FILTER_FN_NAME, PREFERENCE_FN_NAME]
 
 
 class SignatureHelper:
@@ -56,7 +68,9 @@ class SignatureHelper:
     def keyword_arguments(self) -> list:
         if self.spec[3] is None:
             return []
-        return self.spec[3]
+        names = self.spec.args[len(self.spec.args[: -len(self.spec[3])]) :]
+        kwargs = list(zip(names, self.spec[3]))
+        return kwargs
 
     @property
     def has_positional_args(self) -> bool:
@@ -80,6 +94,234 @@ class SignatureHelper:
             return []
         return self.spec.args
 
+    @property
+    def non_class_positional_args(self) -> list:
+        if self.is_staticmethod:
+            return self.positional_args
+        return self.positional_args[1:]
+
+    @property
+    def full_call_arg_spec(self) -> inspect.FullArgSpec:
+        if self.is_staticmethod:
+            return self.spec
+        # remove the self argument
+        return inspect.FullArgSpec(
+            args=self.spec.args[1:],
+            varargs=self.spec.varargs,
+            varkw=self.spec.varkw,
+            defaults=self.spec.defaults,
+            kwonlyargs=self.spec.kwonlyargs,
+            kwonlydefaults=self.spec.kwonlydefaults,
+            annotations=self.spec.annotations,
+        )
+
+
+class ReturnType(Enum):
+    NONE = 0
+    VALUE = 1
+    GENERATOR = 2
+
+
+class ControllerSpec:
+    def __init__(self, cls: "MetaController", name: str, attrs: dict) -> None:
+        self.cls = cls
+        self.name = name
+        self.attrs = attrs
+        self.controlled_methods = {
+            k: SignatureHelper(v)
+            for k, v in attrs.items()
+            if callable(v) and k in CONTROLLED_METHODS
+        }
+        pass
+
+    @property
+    def expected_return_type(self) -> ReturnType:
+        if self.cls.return_generator:
+            return ReturnType.GENERATOR
+
+        if self.has_action:
+            if self.controlled_methods[ACTION_FN_NAME].has_explicit_return:
+                return ReturnType.VALUE
+            return ReturnType.NONE
+        return ReturnType.VALUE
+
+    # Action properties
+
+    @property
+    def has_action(self) -> bool:
+        return ACTION_FN_NAME in self.controlled_methods
+
+    @property
+    def action_num_required_args(self) -> int:
+        if not self.has_action:
+            return 0
+
+        required_length = 2
+        if self.cls.no_partition:
+            required_length -= 1
+        if self.controlled_methods[ACTION_FN_NAME].is_staticmethod:
+            required_length -= 1
+        return required_length
+
+    @property
+    def action_call_args(self) -> List[str]:
+        if not self.has_action:
+            return list()
+        fn = self.controlled_methods[ACTION_FN_NAME]
+        return ControllerSpec.get_fn_call_arg_list(fn)
+
+    # Filter properties
+    @property
+    def has_filter(self) -> bool:
+        return FILTER_FN_NAME in self.controlled_methods
+
+    @property
+    def filter_num_required_args(self) -> int:
+        if not self.has_filter:
+            return 0
+
+        required_length = 2
+        if self.controlled_methods[FILTER_FN_NAME].is_staticmethod:
+            required_length -= 1
+        return required_length
+
+    @property
+    def filter_call_args(self) -> List[str]:
+        if not self.has_filter:
+            return list()
+        fn = self.controlled_methods[FILTER_FN_NAME]
+        return ControllerSpec.get_fn_call_arg_list(fn)
+
+    # Preference properties
+    @property
+    def has_preference(self) -> bool:
+        return PREFERENCE_FN_NAME in self.controlled_methods
+
+    @property
+    def preference_num_required_args(self) -> int:
+        if not self.has_preference:
+            return 0
+
+        required_length = 3
+        if self.controlled_methods[PREFERENCE_FN_NAME].is_staticmethod:
+            required_length -= 1
+        return required_length
+
+    @property
+    def preference_call_args(self) -> List[str]:
+        if not self.has_preference:
+            return list()
+        fn = self.controlled_methods[PREFERENCE_FN_NAME]
+        return ControllerSpec.get_fn_call_arg_list(fn)
+
+    # Signature properties
+    @property
+    def signature_args(self) -> List[str]:
+        signature_args = ["self"]
+        if self.cls.use_dynamic_max_chosen:
+            signature_args.append(DYNAMIC_MAX_CHOSEN_NAME)
+        if self.cls.no_partition == False:
+            signature_args.append(PARTITION_NAME)
+
+        # add positional arguments
+        num_positional_args = 0
+        if self.has_action:
+            num_positional_args = max(
+                len(self.controlled_methods[ACTION_FN_NAME].non_class_positional_args)
+                - self.action_num_required_args,
+                num_positional_args,
+            )
+
+        if self.has_filter:
+            num_positional_args = max(
+                len(self.controlled_methods[FILTER_FN_NAME].non_class_positional_args)
+                - self.action_num_required_args,
+                num_positional_args,
+            )
+
+        if self.has_preference:
+            num_positional_args = max(
+                len(
+                    self.controlled_methods[
+                        PREFERENCE_FN_NAME
+                    ].non_class_positional_args
+                )
+                - self.action_num_required_args,
+                num_positional_args,
+            )
+        signature_args.extend(
+            ControllerSpec.generate_positional_arg_names(num_positional_args)
+        )
+
+        # check for arg unpacks and kwarg unpacks
+        arg_unpack = False
+        kwarg_unpack = False
+        if self.has_action:
+            if self.controlled_methods[ACTION_FN_NAME].has_arg_unpack:
+                arg_unpack = True
+            if self.controlled_methods[ACTION_FN_NAME].has_kwarg_unpack:
+                kwarg_unpack = True
+        if self.has_filter:
+            if self.controlled_methods[FILTER_FN_NAME].has_arg_unpack:
+                arg_unpack = True
+            if self.controlled_methods[FILTER_FN_NAME].has_kwarg_unpack:
+                kwarg_unpack = True
+        if self.has_preference:
+            if self.controlled_methods[PREFERENCE_FN_NAME].has_arg_unpack:
+                arg_unpack = True
+            if self.controlled_methods[PREFERENCE_FN_NAME].has_kwarg_unpack:
+                kwarg_unpack = True
+
+        # add arg unpacks
+        if arg_unpack:
+            signature_args.append(ARG_UNPACK)
+
+        # add keyword arguments
+        keyword_args = []
+        if self.has_action:
+            keyword_args.extend(
+                self.controlled_methods[ACTION_FN_NAME].keyword_arguments
+            )
+        if self.has_filter:
+            keyword_args.extend(
+                self.controlled_methods[FILTER_FN_NAME].keyword_arguments
+            )
+        if self.has_preference:
+            keyword_args.extend(
+                self.controlled_methods[PREFERENCE_FN_NAME].keyword_arguments
+            )
+        cleaned_kwargs = []
+        seen_kwargs = set()
+        for kwarg in keyword_args:
+            if kwarg[0] in seen_kwargs:
+                continue
+            cleaned_kwargs.append(kwarg)
+            seen_kwargs.add(kwarg[0])
+        signature_args.extend(cleaned_kwargs)
+
+        # add kwarg unpacks
+        if kwarg_unpack:
+            signature_args.append(KWARG_UNPACK)
+
+        return signature_args
+
+    @staticmethod
+    def generate_positional_arg_names(num_args: int, prefix: str = "arg") -> List[str]:
+        return [prefix + str(i) for i in range(num_args)]
+
+    @staticmethod
+    def get_fn_call_arg_list(fn: SignatureHelper) -> list:
+        args = fn.non_class_positional_args
+
+        if fn.has_arg_unpack:
+            args.append(ARG_UNPACK)
+
+        args.extend(fn.keyword_arguments)
+
+        if fn.has_kwarg_unpack:
+            args.append(KWARG_UNPACK)
+        return args
+
 
 class MetaController(type):
     name = None
@@ -98,6 +340,7 @@ class MetaController(type):
             return
 
         cls.name: str = cls.name or name
+        cls.spec = ControllerSpec(cls, name, attrs)
         cls._generated_call: str = ""
         cls._has_action: bool = False
         cls._has_filter: bool = False
@@ -247,7 +490,27 @@ class MetaController(type):
                     )
 
     @staticmethod
-    def generate_call_method(cls: "MetaController") -> Callable:
+    def generate_call_method(cls: "MetaController"):
+
+        if cls._has_preference:
+            preference = MetaController.generate_preference(cls)
+            filter = MetaController.generate_filter(cls)
+            action = MetaController.generate_action(cls)
+
+        if cls._action_arg_spec.has_explicit_return:
+            pass
+
+    def generate_preference(cls: "MetaController"):
+        pass
+
+    def generate_filter(cls: "MetaController"):
+        pass
+
+    def generate_action(cls: "MetaController"):
+        pass
+
+    @staticmethod
+    def generate_call_method_original(cls: "MetaController") -> Callable:
 
         signature_args = ["self"]
         if cls.no_partition == False:
@@ -454,17 +717,16 @@ if __name__ == "__main__":
         # return_generator = True
         # static_mode = True
 
-        @staticmethod
-        def action(chosen: int) -> tuple:
+        def action(self, chosen: int, arg0, kwarg0=0) -> tuple:
             # self.counter += 1
             return chosen  # , self.counter
 
         @staticmethod
-        def filter(chosen: int) -> bool:
+        def filter(chosen: int, *args) -> bool:
             return chosen % 2 == 0
 
         @staticmethod
-        def preference(a: int, b: int) -> int:
+        def preference(a: int, b: int, **kwargs) -> int:
             return -1 if a < b else 1 if a > b else 0
 
     elements = (random.randint(0, 100000) for _ in range(1000))

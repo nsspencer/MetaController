@@ -34,6 +34,7 @@ def student_generator(num_students: int, num_grades: int = 4) -> List[Student]:
 
 
 if __name__ == "__main__":
+
     students = student_generator(10, 4)
 
     class CalculateBonus(Controller):
