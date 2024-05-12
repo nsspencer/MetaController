@@ -4,6 +4,8 @@ import random
 import time
 from functools import partial
 
+import pycontroller.internal
+
 random.seed(0)
 
 
@@ -122,6 +124,38 @@ def time_tests1():
     print(timeit.timeit(lambda: list(fastdo2a(elements, 2)), number=num))
 
 
+def constructor_test():
+    import random
+
+    from pycontroller import Controller
+
+    random.seed(0)
+
+    class TestController(Controller):
+        counter = 0
+        # return_generator = True
+        # static_mode = True
+
+        def action(self, chosen: int, arg0, kwarg0=0) -> tuple:
+            # self.counter += 1
+            return chosen  # , self.counter
+
+        @staticmethod
+        def filter(chosen: int, *args) -> bool:
+            return chosen % 2 == 0
+
+        @staticmethod
+        def preference(a: int, b: int, **kwargs) -> int:
+            return -1 if a < b else 1 if a > b else 0
+
+    elements = (random.randint(0, 100000) for _ in range(1000))
+    tst = TestController()
+    # result = TestController(elements)
+    result = tst(elements)
+    pass
+
+
 if __name__ == "__main__":
-    time_tests1()
+    # time_tests1()
     # speedtest2()
+    constructor_test()

@@ -1,3 +1,6 @@
+import os
+
+from Cython.Build import cythonize
 from setuptools import find_packages, setup
 
 setup(
@@ -8,7 +11,7 @@ setup(
     description="A Python library for managing controlled logic.",
     long_description_content_type="text/markdown",
     url="https://github.com/nsspencer/ControllerPy",
-    packages=find_packages(include=["pycontroller"]),
+    packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -18,4 +21,5 @@ setup(
         "test": ["pytest ~= 7.0", "coverage ~= 6.0", "black >= 21.8b"],
     },
     zip_safe=True,
+    ext_modules=cythonize(os.path.join("pycontroller", "quicksort.pyx")),
 )
