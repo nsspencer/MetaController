@@ -17,6 +17,11 @@ class Action(BaseControlledMethod):
         return True
 
     def to_module(self) -> ast.Module:
+        # if has no arguments other than "chosen"
+        # setup_statements.append("action_fn = action")
+        # action_fn(chosen)
+
+        # if has other arguments
         pass
 
     def __eq__(self, other: "Action") -> bool:

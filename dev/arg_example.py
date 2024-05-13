@@ -8,7 +8,8 @@ from heapq import nsmallest
 from pycontroller import quicksort
 
 random.seed(0)
-elements = [random.randint(0, 10000000) for _ in range(10000)]
+elements = [random.randint(0, 10000000) for _ in range(100_00000)]
+num_iterations = 1
 
 
 def action_fn(chosen: int, arg0: int) -> int:
@@ -106,31 +107,31 @@ def simple_pref_sort_unused_extra_arg(a, b, c):
     return -1 if a < b else 1 if a > b else 0
 
 
-# print(
-#     "quicksort with comp",
-#     "\t\t\t",
-#     timeit.timeit(
-#         lambda: quicksort.quickSort(elements, simple_pref_sort),
-#         number=100,
-#     ),
-# )
-# print(
-#     "quicksort with wrapped comp",
-#     "\t\t",
-#     timeit.timeit(
-#         lambda: quicksort.quickSort(
-#             elements, wrap_preference_function(preference_fn, 1)
-#         ),
-#         number=100,
-#     ),
-# )
+print(
+    "quicksort with comp",
+    "\t\t\t",
+    timeit.timeit(
+        lambda: quicksort.quickSort(elements, simple_pref_sort),
+        number=num_iterations,
+    ),
+)
+print(
+    "quicksort with wrapped comp",
+    "\t\t",
+    timeit.timeit(
+        lambda: quicksort.quickSort(
+            elements, wrap_preference_function(preference_fn, 1)
+        ),
+        number=num_iterations,
+    ),
+)
 
 print(
     "timsort",
     "\t\t\t\t",
     timeit.timeit(
         lambda: quicksort.timSort2(elements),
-        number=100,
+        number=num_iterations,
     ),
 )
 print(
@@ -138,7 +139,7 @@ print(
     "\t\t\t",
     timeit.timeit(
         lambda: quicksort.timSort(elements, simple_pref_sort),
-        number=100,
+        number=num_iterations,
     ),
 )
 print(
@@ -146,17 +147,21 @@ print(
     "\t\t",
     timeit.timeit(
         lambda: quicksort.timSort(elements, wrap_preference_function(preference_fn, 1)),
-        number=100,
+        number=num_iterations,
     ),
 )
 
-print("sorted", "\t\t\t\t\t", timeit.timeit(lambda: sorted(elements), number=100))
+print(
+    "sorted",
+    "\t\t\t\t\t",
+    timeit.timeit(lambda: sorted(elements), number=num_iterations),
+)
 print(
     "sorted with cmp",
     "\t\t\t",
     timeit.timeit(
         lambda: sorted(elements, key=cmp_to_key(simple_pref_sort)),
-        number=100,
+        number=num_iterations,
     ),
 )
 print(
@@ -166,7 +171,7 @@ print(
         lambda: sorted(
             elements, key=cmp_to_key(wrap_preference_function(preference_fn, 1))
         ),
-        number=100,
+        number=num_iterations,
     ),
 )
 
@@ -175,16 +180,16 @@ print(
     "nsmallest",
     "\t\t\t\t",
     timeit.timeit(
-        lambda: nsmallest(len(elements), elements),
-        number=100,
+        lambda: nsmallest(1, elements),
+        number=num_iterations,
     ),
 )
 print(
     "nsmallest with cmp",
     "\t\t\t",
     timeit.timeit(
-        lambda: nsmallest(len(elements), elements, key=cmp_to_key(simple_pref_sort)),
-        number=100,
+        lambda: nsmallest(1, elements, key=cmp_to_key(simple_pref_sort)),
+        number=num_iterations,
     ),
 )
 print(
@@ -192,11 +197,39 @@ print(
     "\t\t\t",
     timeit.timeit(
         lambda: nsmallest(
-            len(elements),
+            1,
             elements,
             key=cmp_to_key(wrap_preference_function(preference_fn, 1)),
         ),
-        number=100,
+        number=num_iterations,
+    ),
+)
+
+print(
+    "min",
+    "\t\t\t\t",
+    timeit.timeit(
+        lambda: min(elements),
+        number=num_iterations,
+    ),
+)
+print(
+    "min with cmp",
+    "\t\t\t",
+    timeit.timeit(
+        lambda: min(elements, key=cmp_to_key(simple_pref_sort)),
+        number=num_iterations,
+    ),
+)
+print(
+    "min wrapped cmp",
+    "\t\t\t",
+    timeit.timeit(
+        lambda: min(
+            elements,
+            key=cmp_to_key(wrap_preference_function(preference_fn, 1)),
+        ),
+        number=num_iterations,
     ),
 )
 
@@ -205,31 +238,31 @@ print(
 # argument = 1
 # a = timeit.timeit(
 #     lambda: action_no_filter_no_preference(elements, argument),
-#     number=100,
+#     number=num_iterations,
 # )
 # a2 = timeit.timeit(
-#     lambda: action_map_no_filter_no_preference(elements, argument), number=100
+#     lambda: action_map_no_filter_no_preference(elements, argument), number=num_iterations
 # )
 # a3 = timeit.timeit(
-#     lambda: action_generator_no_filter_no_preference(elements, argument), number=100
+#     lambda: action_generator_no_filter_no_preference(elements, argument), number=num_iterations
 # )
 # b = timeit.timeit(
 #     lambda: action_with_filter_no_preference(
 #         elements, argument, special_val=special_val
 #     ),
-#     number=100,
+#     number=num_iterations,
 # )
 # b2 = timeit.timeit(
 #     lambda: action_with_wrapped_filter_no_preference(
 #         elements, argument, special_val=special_val
 #     ),
-#     number=100,
+#     number=num_iterations,
 # )
 # c = timeit.timeit(
 #     lambda: action_with_filter_with_preference(
 #         elements, argument, special_val=special_val
 #     ),
-#     number=100,
+#     number=num_iterations,
 # )
 # print(a, a2, a3, b, b2, c)
 
@@ -241,12 +274,28 @@ action:
 With args, the fastest way is to assign a local variable to the action fn and then call that in a list comprehension, passing the args required by name and by kwarg.
 
 preference:
+TLDR: For now, just use nsmallest everywhere to avoid needing a c compiler for my cython code.
 Without args, sorted is the fastest, with nsmallest with the length of the elements being almost equivalent. With a comparitor, my cython implementation of timsort
 with a comparator is fastest, then nsmallest is 20% slower, then sorted with a comparator just behind at 22%. With a comparitor with args, my cython timsort is about 
 25% faster than nsmallest with a wrapped comparator, and about 28% faster than sorted with a wrapped comparitor.
-TLDR: For now, just use nsmallest everywhere to avoid needing a c compiler for my cython code.
+
 
 filter:
 TODO
+
+
+first cases:
+
+action:
+chosen arg
+additional arguments
+
+filter:
+chosen arg
+additional arguments
+
+preference:
+
+
 
 """
