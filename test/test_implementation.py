@@ -133,8 +133,8 @@ class BasicImplementationTest(unittest.TestCase):
         self.assertTrue(normal_sum + len(elements) == new_sum)
 
 
-class ArgumentImplementationTests(unittest.TestCase):
-    def test_action_positional_arg(self):
+class ActionArgumentImplementationTests(unittest.TestCase):
+    def test_positional_arg(self):
         class T(C):
             def action(self, chosen: Any, pos_arg: int) -> Any:
                 return chosen + pos_arg
@@ -144,7 +144,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, 1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 1))
 
-    def test_action_keyword_arg(self):
+    def test_keyword_arg(self):
         class T(C):
             def action(self, chosen: Any, keyword_arg: int = 0) -> Any:
                 return chosen + keyword_arg
@@ -154,7 +154,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, keyword_arg=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 1))
 
-    def test_action_keyword_default_arg(self):
+    def test_keyword_default_arg(self):
         class T(C):
             def action(self, chosen: Any, keyword_arg: int = 1) -> Any:
                 return chosen + keyword_arg
@@ -164,7 +164,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 1))
 
-    def test_action_positional_and_keyword_default_arg(self):
+    def test_positional_and_keyword_default_arg(self):
         class T(C):
             def action(self, chosen: Any, pos_arg0: int, keyword_arg: int = 1) -> Any:
                 return chosen + pos_arg0 + keyword_arg
@@ -174,7 +174,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, 1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 2))
 
-    def test_action_arg_unpack_arg(self):
+    def test_arg_unpack_arg(self):
         class T(C):
             def action(self, chosen: Any, *args) -> Any:
                 return chosen + args[0]
@@ -184,7 +184,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, 1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 1))
 
-    def test_action_kwarg_unpack_arg(self):
+    def test_kwarg_unpack_arg(self):
         class T(C):
             def action(self, chosen: Any, **kwargs) -> Any:
                 return chosen + kwargs["keyword_argument"]
@@ -194,7 +194,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, keyword_argument=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 1))
 
-    def test_action_arg_and_kwarg_unpack_arg(self):
+    def test_arg_and_kwarg_unpack_arg(self):
         class T(C):
             def action(self, chosen: Any, *args, **kwargs) -> Any:
                 return chosen + args[0] + kwargs["keyword_argument"]
@@ -204,7 +204,7 @@ class ArgumentImplementationTests(unittest.TestCase):
         e = a(elements, 1, keyword_argument=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 2))
 
-    def test_action_positional_keyword_arg_and_kwarg_unpack_arg(self):
+    def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
         class T(C):
             def action(
                 self, chosen: Any, pos_arg0, *args, keyword_arg1=1, **kwargs
@@ -221,6 +221,84 @@ class ArgumentImplementationTests(unittest.TestCase):
         a = T()
         e = a(elements, 1, 1, keyword_arg1=1, keyword_argument2=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 4))
+
+
+class FilterArgumentImplementationTests(unittest.TestCase):
+    FIND_ME = 1
+
+    def test_positional_arg(self):
+        class T(C):
+            def filter(self, chosen: Any, pos_arg: int) -> bool:
+                return chosen % pos_arg == 0
+
+        a = T()
+        e = a(elements, 1)
+        self.assertTrue(all([i % 1 == 0 for i in e]))
+
+    def test_keyword_arg(self):
+        class T(C):
+            def filter(self, chosen: Any, keyword_arg: int = 1) -> bool:
+                return chosen % keyword_arg == 0
+
+        a = T()
+        e = a(elements, keyword_arg=3)
+        self.assertTrue(all([i % 3 == 0 for i in e]))
+
+    def test_keyword_arg_default(self):
+        class T(C):
+            def filter(self, chosen: Any, keyword_arg: int = 1) -> bool:
+                return chosen % keyword_arg == 0
+
+        a = T()
+        e = a(elements)
+        self.assertTrue(all([i % 1 == 0 for i in e]))
+
+    def test_positional_and_keyword_arg(self):
+        class T(C):
+            def filter(self, chosen: Any, arg0: int, keyword_arg: int = 1) -> bool:
+                return chosen % arg0 == keyword_arg
+
+        a = T()
+        e = a(elements, 3, keyword_arg=1)
+        self.assertTrue(all([i % 3 == 1 for i in e]))
+
+    def test_arg_unpack(self):
+        class T(C):
+            def filter(self, chosen: Any, *args) -> bool:
+                return chosen % args[0] == 0
+
+        a = T()
+        e = a(elements, 2)
+        self.assertTrue(all([i % 2 == 0 for i in e]))
+
+    def test_kwarg_unpack(self):
+        class T(C):
+            def filter(self, chosen: Any, **kwargs) -> bool:
+                return chosen % kwargs["keyword_arg"] == 0
+
+        a = T()
+        e = a(elements, keyword_arg=2)
+        self.assertTrue(all([i % 2 == 0 for i in e]))
+
+    def test_arg_and_kwarg_unpack(self):
+        class T(C):
+            def filter(self, chosen: Any, *args, **kwargs) -> bool:
+                return chosen % args[0] == kwargs["keyword_arg"]
+
+        a = T()
+        e = a(elements, 2, keyword_arg=0)
+        self.assertTrue(all([i % 2 == 0 for i in e]))
+
+    def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
+        class T(C):
+            def filter(self, chosen: Any, arg0, *args, keyword_arg, **kwargs) -> bool:
+                assert arg0 == args[0]
+                assert keyword_arg == kwargs["keyword_arg2"]
+                return chosen % arg0 == keyword_arg
+
+        a = T()
+        e = a(elements, 2, 2, keyword_arg=1, keyword_arg2=1)
+        self.assertTrue(all([i % 2 == 1 for i in e]))
 
 
 if __name__ == "__main__":

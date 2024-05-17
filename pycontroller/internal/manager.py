@@ -98,17 +98,71 @@ class Filter(ControlledMethod):
     def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
         # Create the nodes for the function name and the arguments
         filter_name = ast.Name(id="filter", ctx=ast.Load())
-        filter_fn_name = ast.Attribute(
-            value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()), attr=FILTER_FN_NAME
+
+        args = []
+        args.append(ast.arg(arg=CHOSEN_NAME, annotation=None))
+        args.extend(
+            ControllerManager.generate_positional_args(
+                len(self.signature.non_class_positional_args)
+                - self.get_min_required_call_args()
+            )
         )
+        if self.signature.has_arg_unpack:
+            args.append(
+                ast.Starred(
+                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
+                )
+            )
+
+        kwargs = []
+        for keyword, default in self.signature.keyword_arguments:
+            kwargs.append(
+                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
+            )
+        if self.signature.has_kwarg_unpack:
+            kwargs.append(
+                ast.keyword(
+                    arg=None,  # `arg` must be None for **kwargs
+                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
+                )
+            )
+
         elements_arg = ast.Name(id=PARTITION_NAME, ctx=ast.Load())
+        if len(args) + len(kwargs) > self.get_min_required_call_args():
+            # just do a generator expression (i for i in PARTITION if filter(i, *args, **kwargs))
+            # Construct the generator expression
+            filter_fn_name = ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Load())
 
-        # Create the function call node
-        call = ast.Call(
-            func=filter_name, args=[filter_fn_name, elements_arg], keywords=[]
+            call = ast.GeneratorExp(
+                elt=ast.Name(id=CHOSEN_NAME, ctx=ast.Load()),
+                generators=[
+                    ast.comprehension(
+                        target=ast.Name(id=CHOSEN_NAME, ctx=ast.Load()),
+                        iter=elements_arg,
+                        ifs=[ast.Call(func=filter_fn_name, args=args, keywords=kwargs)],
+                        is_async=False,
+                    )
+                ],
+            )
+        else:
+            filter_fn_name = ast.Attribute(
+                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()), attr=FILTER_FN_NAME
+            )
+            # Create the function call node
+            call = ast.Call(
+                func=filter_name, args=[filter_fn_name, elements_arg], keywords=[]
+            )
+
+        setup_statement = ast.Assign(
+            targets=[ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Store())],
+            value=ast.Attribute(
+                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                attr=FILTER_FN_NAME,
+                ctx=ast.Load(),
+            ),
+            lineno=self.get_new_lineno(),
         )
-
-        return call, list()
+        return call, [setup_statement]
 
     def get_min_required_call_args(self) -> int:
         return 1  # chosen

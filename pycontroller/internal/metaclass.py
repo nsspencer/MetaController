@@ -1,4 +1,3 @@
-from abc import ABCMeta
 from typing import _ProtocolMeta
 
 from pycontroller.internal.manager import ControllerManager
