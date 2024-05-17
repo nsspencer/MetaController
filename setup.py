@@ -11,10 +11,10 @@ setup(
     description="A Python library for managing controlled logic.",
     long_description_content_type="text/markdown",
     url="https://github.com/nsspencer/ControllerPy",
-    packages=find_packages(),
+    packages=find_packages(exclude=["test", "old_test", "dev"]),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
     ],
     extras_require={
@@ -22,4 +22,5 @@ setup(
     },
     zip_safe=True,
     ext_modules=cythonize(os.path.join("pycontroller", "quicksort.pyx")),
+    install_requires=["astor"],
 )

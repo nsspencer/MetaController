@@ -3589,7 +3589,7 @@ static void __pyx_f_12pycontroller_9quicksort_insertionSort(PyObject *__pyx_v_ar
  * 
  * cdef void merge(list arr, int l, int m, int r, cmp):             # <<<<<<<<<<<<<<
  *     cdef int len1 = m - l + 1, len2 = r - m
- *     cdef list left = [0] * len1
+ *     cdef list left = []
  */
 
 static void __pyx_f_12pycontroller_9quicksort_merge(PyObject *__pyx_v_arr, int __pyx_v_l, int __pyx_v_m, int __pyx_v_r, PyObject *__pyx_v_cmp) {
@@ -3623,8 +3623,8 @@ static void __pyx_f_12pycontroller_9quicksort_merge(PyObject *__pyx_v_arr, int _
  * 
  * cdef void merge(list arr, int l, int m, int r, cmp):
  *     cdef int len1 = m - l + 1, len2 = r - m             # <<<<<<<<<<<<<<
- *     cdef list left = [0] * len1
- *     cdef list right = [0] * len2
+ *     cdef list left = []
+ *     cdef list right = []
  */
   __pyx_v_len1 = ((__pyx_v_m - __pyx_v_l) + 1);
   __pyx_v_len2 = (__pyx_v_r - __pyx_v_m);
@@ -3632,43 +3632,29 @@ static void __pyx_f_12pycontroller_9quicksort_merge(PyObject *__pyx_v_arr, int _
   /* "pycontroller/quicksort.pyx":51
  * cdef void merge(list arr, int l, int m, int r, cmp):
  *     cdef int len1 = m - l + 1, len2 = r - m
- *     cdef list left = [0] * len1             # <<<<<<<<<<<<<<
- *     cdef list right = [0] * len2
+ *     cdef list left = []             # <<<<<<<<<<<<<<
+ *     cdef list right = []
  *     cdef int i, j, k
  */
-  __pyx_t_1 = PyList_New(1 * ((__pyx_v_len1<0) ? 0:__pyx_v_len1)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  { Py_ssize_t __pyx_temp;
-    for (__pyx_temp=0; __pyx_temp < __pyx_v_len1; __pyx_temp++) {
-      __Pyx_INCREF(__pyx_int_0);
-      __Pyx_GIVEREF(__pyx_int_0);
-      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, __pyx_temp, __pyx_int_0)) __PYX_ERR(0, 51, __pyx_L1_error);
-    }
-  }
   __pyx_v_left = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "pycontroller/quicksort.pyx":52
  *     cdef int len1 = m - l + 1, len2 = r - m
- *     cdef list left = [0] * len1
- *     cdef list right = [0] * len2             # <<<<<<<<<<<<<<
+ *     cdef list left = []
+ *     cdef list right = []             # <<<<<<<<<<<<<<
  *     cdef int i, j, k
  *     for i in range(0, len1):
  */
-  __pyx_t_1 = PyList_New(1 * ((__pyx_v_len2<0) ? 0:__pyx_v_len2)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 52, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  { Py_ssize_t __pyx_temp;
-    for (__pyx_temp=0; __pyx_temp < __pyx_v_len2; __pyx_temp++) {
-      __Pyx_INCREF(__pyx_int_0);
-      __Pyx_GIVEREF(__pyx_int_0);
-      if (__Pyx_PyList_SET_ITEM(__pyx_t_1, __pyx_temp, __pyx_int_0)) __PYX_ERR(0, 52, __pyx_L1_error);
-    }
-  }
   __pyx_v_right = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
   /* "pycontroller/quicksort.pyx":54
- *     cdef list right = [0] * len2
+ *     cdef list right = []
  *     cdef int i, j, k
  *     for i in range(0, len1):             # <<<<<<<<<<<<<<
  *         left.append(arr[l + i])
@@ -3972,7 +3958,7 @@ static void __pyx_f_12pycontroller_9quicksort_merge(PyObject *__pyx_v_arr, int _
  * 
  * cdef void merge(list arr, int l, int m, int r, cmp):             # <<<<<<<<<<<<<<
  *     cdef int len1 = m - l + 1, len2 = r - m
- *     cdef list left = [0] * len1
+ *     cdef list left = []
  */
 
   /* function exit code */

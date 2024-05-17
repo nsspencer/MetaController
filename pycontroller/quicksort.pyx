@@ -48,8 +48,8 @@ cdef void insertionSort(list arr, int left, int right, cmp):
 
 cdef void merge(list arr, int l, int m, int r, cmp):
     cdef int len1 = m - l + 1, len2 = r - m
-    cdef list left = [0] * len1
-    cdef list right = [0] * len2
+    cdef list left = []
+    cdef list right = []
     cdef int i, j, k
     for i in range(0, len1):
         left.append(arr[l + i])

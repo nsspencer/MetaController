@@ -1,8 +1,10 @@
+from abc import ABCMeta
+from typing import _ProtocolMeta
+
 from pycontroller.internal.manager import ControllerManager
 
 
-class MetaController(type):
-
+class MetaController(_ProtocolMeta):
     def __init__(cls, name, bases, attrs):
         super().__init__(name, bases, attrs)
         if name == "Controller":

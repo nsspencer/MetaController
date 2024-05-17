@@ -4,8 +4,6 @@ from functools import cmp_to_key
 from heapq import nsmallest
 from typing import Callable, List, Tuple
 
-import astor
-
 from pycontroller.internal.signature_helper import SignatureHelper
 
 PARTITION_NAME = "partition"
@@ -15,6 +13,9 @@ GENERATED_ACTION_FN_NAME = "_action"
 GENERATED_FILTER_FN_NAME = "_filter"
 GENERATED_PREFERENCE_FN_NAME = "_preference"
 CLASS_ARG_NAME = "self"
+POSITIONAL_ARG_PREFIX = "arg_"
+VAR_ARG_NAME = "args"
+KWARG_NAME = "kwargs"
 
 ACTION_FN_NAME = "action"
 FILTER_FN_NAME = "filter"
@@ -33,6 +34,10 @@ class ControlledMethod(ABC):
     def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
         pass
 
+    @abstractmethod
+    def get_min_required_call_args(self) -> int:
+        pass
+
     def get_new_lineno(self):
         self.current_setup_instructions_lineno += 1
         return self.current_setup_instructions_lineno
@@ -42,10 +47,37 @@ class Action(ControlledMethod):
     def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
         # Create the nodes for the function name and the argument
         func_name = ast.Name(id=GENERATED_ACTION_FN_NAME, ctx=ast.Load())
-        arg = ast.Name(id=CHOSEN_NAME, ctx=ast.Load())
+
+        args = []
+        args.append(ast.arg(arg=CHOSEN_NAME, annotation=None))
+        args.extend(
+            ControllerManager.generate_positional_args(
+                len(self.signature.non_class_positional_args)
+                - self.get_min_required_call_args()
+            )
+        )
+        if self.signature.has_arg_unpack:
+            args.append(
+                ast.Starred(
+                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
+                )
+            )
+
+        kwargs = []
+        for keyword, default in self.signature.keyword_arguments:
+            kwargs.append(
+                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
+            )
+        if self.signature.has_kwarg_unpack:
+            kwargs.append(
+                ast.keyword(
+                    arg=None,  # `arg` must be None for **kwargs
+                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
+                )
+            )
 
         # Create the function call node
-        call = ast.Call(func=func_name, args=[arg], keywords=[])
+        call = ast.Call(func=func_name, args=args, keywords=kwargs)
 
         setup_statement = ast.Assign(
             targets=[ast.Name(id=GENERATED_ACTION_FN_NAME, ctx=ast.Store())],
@@ -57,6 +89,9 @@ class Action(ControlledMethod):
             lineno=self.get_new_lineno(),
         )
         return call, [setup_statement]
+
+    def get_min_required_call_args(self) -> int:
+        return 1  # chosen
 
 
 class Filter(ControlledMethod):
@@ -74,6 +109,9 @@ class Filter(ControlledMethod):
         )
 
         return call, list()
+
+    def get_min_required_call_args(self) -> int:
+        return 1  # chosen
 
 
 class Preference(ControlledMethod):
@@ -107,6 +145,9 @@ class Preference(ControlledMethod):
         )
 
         return call, list()
+
+    def get_min_required_call_args(self) -> int:
+        return 2  # a, b
 
 
 class ControllerManager:
@@ -146,6 +187,113 @@ class ControllerManager:
     def validate_class_methods(self):
         pass
 
+    @staticmethod
+    def generate_positional_args(num_args: int) -> List[ast.arg]:
+        args = []
+
+        for i in range(num_args):
+            args.append(
+                ast.arg(
+                    arg=f"{POSITIONAL_ARG_PREFIX}{i}",
+                    annotation=None,
+                    type_comment=None,
+                )
+            )
+        return args
+
+    def get_call_signature_args(self) -> ast.arguments:
+        posonlyargs = []
+        args = []
+        kwonlyargs = []
+        kw_defaults = []
+        defaults = []
+
+        # Create ast.arg objects for the function arguments
+        class_arg = ast.arg(arg=CLASS_ARG_NAME, annotation=None, type_comment=None)
+        partition_arg = ast.arg(arg=PARTITION_NAME, annotation=None, type_comment=None)
+        args.append(class_arg)
+        args.append(partition_arg)
+
+        # generate positional args
+        pos_args_to_generate = 0
+        if self.has_action:
+            arg_difference = (
+                len(self.action.signature.non_class_positional_args)
+                - self.action.get_min_required_call_args()
+            )
+            pos_args_to_generate = max(
+                arg_difference,
+                pos_args_to_generate,
+            )
+        if self.has_preference:
+            arg_difference = (
+                len(self.preference.signature.non_class_positional_args)
+                - self.preference.get_min_required_call_args()
+            )
+            pos_args_to_generate = max(
+                arg_difference,
+                pos_args_to_generate,
+            )
+        if self.has_filter:
+            arg_difference = (
+                len(self.filter.signature.non_class_positional_args)
+                - self.filter.get_min_required_call_args()
+            )
+            pos_args_to_generate = max(
+                arg_difference,
+                pos_args_to_generate,
+            )
+        args.extend(self.generate_positional_args(pos_args_to_generate))
+
+        # get the keyword arguments
+        if self.has_action:
+            for keyword, default in self.action.signature.keyword_arguments:
+                args.append(ast.arg(arg=keyword, annotation=None))
+                defaults.append(ast.Constant(default))
+        if self.has_filter:
+            for keyword, default in self.filter.signature.keyword_arguments:
+                args.append(ast.arg(arg=keyword, annotation=None))
+                defaults.append(ast.Constant(default))
+        if self.has_preference:
+            for keyword, default in self.preference.signature.keyword_arguments:
+                args.append(ast.arg(arg=keyword, annotation=None))
+                defaults.append(ast.Constant(default))
+
+        # check for arg unpacks
+        var_arg = None
+        has_var_arg = False
+        if self.has_action:
+            has_var_arg = self.action.signature.has_arg_unpack or has_var_arg
+        if self.has_filter:
+            has_var_arg = self.filter.signature.has_arg_unpack or has_var_arg
+        if self.has_preference:
+            has_var_arg = self.preference.signature.has_arg_unpack or has_var_arg
+        if has_var_arg:
+            var_arg = ast.arg(arg=VAR_ARG_NAME, annotation=None)
+
+        # check for kwarg unpacks
+        kwarg = None
+        has_kwarg = False
+        if self.has_action:
+            has_kwarg = self.action.signature.has_kwarg_unpack or has_kwarg
+        if self.has_filter:
+            has_kwarg = self.filter.signature.has_kwarg_unpack or has_kwarg
+        if self.has_preference:
+            has_kwarg = self.preference.signature.has_kwarg_unpack or has_kwarg
+        if has_kwarg:
+            kwarg = ast.arg(arg=KWARG_NAME, annotation=None)
+
+        func_args = ast.arguments(
+            posonlyargs=posonlyargs,
+            args=args,
+            vararg=var_arg,
+            kwonlyargs=kwonlyargs,
+            kw_defaults=kw_defaults,
+            kwarg=kwarg,
+            defaults=defaults,
+        )
+        return func_args
+
     def generate_call_method(self) -> Callable:
         get_elements = ast.Name(id=PARTITION_NAME, ctx=ast.Load())
         setup_statements = []
@@ -182,22 +330,10 @@ class ControllerManager:
         return_statement = ast.Return(generator_expr)
         body_code = setup_statements + [return_statement]
 
-        # Create ast.arg objects for the function arguments
-        class_arg = ast.arg(arg=CLASS_ARG_NAME, annotation=None, type_comment=None)
-        partition_arg = ast.arg(arg=PARTITION_NAME, annotation=None, type_comment=None)
-
-        func_args = ast.arguments(
-            posonlyargs=[],
-            args=[class_arg, partition_arg],
-            vararg=None,
-            kwonlyargs=[],
-            kw_defaults=[],
-            kwarg=None,
-            defaults=[],
-        )
+        signature_args = self.get_call_signature_args()
         call_fn = ast.FunctionDef(
             name=GENERATED_FUNCTION_NAME,
-            args=func_args,
+            args=signature_args,
             body=[body_code],
             decorator_list=[],
             returns=None,
