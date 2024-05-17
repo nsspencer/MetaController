@@ -1,13 +1,16 @@
 import ast
+import sys
 from abc import ABC, abstractmethod
 from functools import cmp_to_key
-from heapq import nsmallest
+from heapq import nsmallest as _heapq_nsmallest
 from typing import Callable, List, Tuple
 
 from pycontroller.internal.signature_helper import SignatureHelper
 
 PARTITION_NAME = "partition"
 CHOSEN_NAME = "chosen"
+PREFERENCE_SELF_NAME = "a"
+PREFERENCE_OTHER_NAME = "b"
 GENERATED_FUNCTION_NAME = "call_fn"
 GENERATED_ACTION_FN_NAME = "_action"
 GENERATED_FILTER_FN_NAME = "_filter"
@@ -172,18 +175,82 @@ class Preference(ControlledMethod):
     def generate_expression(
         self, get_elements_expression: ast.expr
     ) -> Tuple[ast.expr, List[ast.stmt]]:
-        # Create the nodes for the function names and the arguments
-        nsmallest_name = ast.Name(id="nsmallest", ctx=ast.Load())
-        len_call = ast.Call(
-            func=ast.Name(id="len", ctx=ast.Load()),
-            args=[ast.Name(id=PARTITION_NAME, ctx=ast.Load())],
-            keywords=[],
-        )
+        setup_statements = []
 
-        cmp_to_key_name = ast.Name(id="cmp_to_key", ctx=ast.Load())
-        preference_fn_name = ast.Attribute(
-            value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()), attr=PREFERENCE_FN_NAME
+        # Create the nodes for the function names and the arguments
+        nsmallest_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
+        max_size = ast.Constant(value=sys.maxsize, kind=int)
+
+        args = []
+        args.append(ast.arg(arg=PREFERENCE_SELF_NAME, annotation=None))
+        args.append(ast.arg(arg=PREFERENCE_OTHER_NAME, annotation=None))
+        args.extend(
+            ControllerManager.generate_positional_args(
+                len(self.signature.non_class_positional_args)
+                - self.get_min_required_call_args()
+            )
         )
+        if self.signature.has_arg_unpack:
+            args.append(
+                ast.Starred(
+                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
+                )
+            )
+
+        kwargs = []
+        for keyword, default in self.signature.keyword_arguments:
+            kwargs.append(
+                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
+            )
+        if self.signature.has_kwarg_unpack:
+            kwargs.append(
+                ast.keyword(
+                    arg=None,  # `arg` must be None for **kwargs
+                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
+                )
+            )
+
+        if len(args) + len(kwargs) > self.get_min_required_call_args():
+            preference_fn_name_original = ast.Attribute(
+                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                attr=PREFERENCE_FN_NAME,
+            )
+            call = ast.Call(
+                func=preference_fn_name_original, args=args, keywords=kwargs
+            )
+            # Lambda function: lambda x: _pref_fn(x, arg0, kwarg1=kwarg1)
+            lambda_node = ast.Lambda(
+                args=ast.arguments(
+                    posonlyargs=[],
+                    args=[
+                        ast.arg(arg=PREFERENCE_SELF_NAME, annotation=None),
+                        ast.arg(arg=PREFERENCE_OTHER_NAME, annotation=None),
+                    ],
+                    vararg=None,
+                    kwonlyargs=[],
+                    kw_defaults=[],
+                    defaults=[],
+                ),
+                body=call,
+            )
+
+            preference_fn_name = ast.Name(
+                id=GENERATED_PREFERENCE_FN_NAME, ctx=ast.Store()
+            )
+            preference_fn = ast.Assign(
+                targets=[preference_fn_name],
+                value=lambda_node,
+                lineno=self.get_new_lineno(),
+            )
+            setup_statements.append(preference_fn)
+
+        else:
+            preference_fn_name = ast.Attribute(
+                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                attr=PREFERENCE_FN_NAME,
+            )
+
+        cmp_to_key_name = ast.Name(id="_cmp_to_key", ctx=ast.Load())
         key_arg = ast.keyword(
             arg="key",
             value=ast.Call(
@@ -194,11 +261,11 @@ class Preference(ControlledMethod):
         # Create the function call node
         call = ast.Call(
             func=nsmallest_name,
-            args=[len_call, get_elements_expression],
+            args=[max_size, get_elements_expression],
             keywords=[key_arg],
         )
 
-        return call, list()
+        return call, setup_statements
 
     def get_min_required_call_args(self) -> int:
         return 2  # a, b
@@ -396,7 +463,7 @@ class ControllerManager:
         )
 
         self.generated_call_fn = ast.unparse(call_fn)
-        _globals = {"nsmallest": nsmallest, "cmp_to_key": cmp_to_key}
+        _globals = {"_heapq_nsmallest": _heapq_nsmallest, "_cmp_to_key": cmp_to_key}
         _locals = {}
         eval(
             compile(self.generated_call_fn, filename="<ast>", mode="exec"),

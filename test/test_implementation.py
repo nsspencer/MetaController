@@ -301,5 +301,131 @@ class FilterArgumentImplementationTests(unittest.TestCase):
         self.assertTrue(all([i % 2 == 1 for i in e]))
 
 
+class PreferenceArgumentImplementationTests(unittest.TestCase):
+    def test_positional_arg(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, pos_arg: int) -> int:
+                if pos_arg == 1:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 1)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, 0)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_keyword_arg(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
+                if keyword_arg == 1:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, keyword_arg=1)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, keyword_arg=0)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_keyword_arg_default(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
+                if keyword_arg == 1:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, keyword_arg=0)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_positional_and_keyword_arg(self):
+        class T(C):
+            def preference(
+                self, a: Any, b: Any, pos_arg: int, keyword_arg: int = 1
+            ) -> int:
+                if pos_arg == keyword_arg:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 1, keyword_arg=0)
+        self.assertTrue(max(elements) == e[0])
+        e = a(elements, 1, keyword_arg=1)
+        self.assertTrue(min(elements) == e[0])
+
+    def test_arg_unpack(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, *args) -> int:
+                if args[0] == 1:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 1)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, 0)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_kwarg_unpack(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, **kwargs) -> int:
+                if kwargs["keyword_arg"] == 1:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, keyword_arg=1)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, keyword_arg=0)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_arg_and_kwarg_unpack(self):
+        class T(C):
+            def preference(self, a: Any, b: Any, *args, **kwargs) -> int:
+                if args[0] == kwargs["keyword_arg"]:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 1, keyword_arg=1)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, 0, keyword_arg=1)
+        self.assertTrue(max(elements) == e[0])
+
+    def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
+        class T(C):
+            def preference(
+                self,
+                a: Any,
+                b: Any,
+                pos_arg: int,
+                *args,
+                keyword_arg1: int = 1,
+                **kwargs
+            ) -> int:
+                if pos_arg == keyword_arg1 == args[0] == kwargs["keyword_arg"]:
+                    return -1 if a < b else 1 if a > b else 0
+                else:
+                    return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 0, 0, keyword_arg1=0, keyword_arg=0)
+        self.assertTrue(min(elements) == e[0])
+        e = a(elements, 0, 1, keyword_arg1=1, keyword_arg=2)
+        self.assertTrue(max(elements) == e[0])
+        with self.assertRaises(IndexError):
+            e = a(elements, 0, keyword_arg1=0)
+
+
 if __name__ == "__main__":
     unittest.main()
