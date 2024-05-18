@@ -1,7 +1,7 @@
 import ast
 import sys
 from abc import ABC, abstractmethod
-from typing import Callable, List, Tuple
+from typing import Any, Callable, List, Tuple
 
 from pycontroller.internal.namespace import *
 from pycontroller.internal.signature_helper import SignatureHelper
@@ -83,6 +83,7 @@ class Action(ControlledMethod):
 class Filter(ControlledMethod):
     def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
         # Create the nodes for the function name and the arguments
+        setup_statements = []
         filter_name = ast.Name(id="filter", ctx=ast.Load())
 
         args = []
@@ -130,6 +131,19 @@ class Filter(ControlledMethod):
                     )
                 ],
             )
+
+            # save a local instance of the preference function
+            setup_statements.append(
+                ast.Assign(
+                    targets=[ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Store())],
+                    value=ast.Attribute(
+                        value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                        attr=FILTER_FN_NAME,
+                        ctx=ast.Load(),
+                    ),
+                    lineno=self.get_new_lineno(),
+                )
+            )
         else:
             filter_fn_name = ast.Attribute(
                 value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()), attr=FILTER_FN_NAME
@@ -139,16 +153,7 @@ class Filter(ControlledMethod):
                 func=filter_name, args=[filter_fn_name, elements_arg], keywords=[]
             )
 
-        setup_statement = ast.Assign(
-            targets=[ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Store())],
-            value=ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=FILTER_FN_NAME,
-                ctx=ast.Load(),
-            ),
-            lineno=self.get_new_lineno(),
-        )
-        return call, [setup_statement]
+        return call, setup_statements
 
     def get_min_required_call_args(self) -> int:
         return 1  # chosen

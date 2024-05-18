@@ -242,6 +242,13 @@ class ControllerManager:
                 ],
             )
 
+        if self.has_filter and not self.has_action and not self.has_preference:
+            generator_expr = ast.Call(
+                func=ast.Name(id="list", ctx=ast.Load()),
+                args=[generator_expr],
+                keywords=[],
+            )
+
         return_statement = ast.Return(generator_expr)
         body_code = setup_statements + [return_statement]
         signature_args = self.get_call_signature_args()
