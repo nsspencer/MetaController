@@ -62,11 +62,25 @@ class TestReturnTypes(unittest.TestCase):
     def test_preference_arg(self):
         class T(C):
             def preference(self, a, b, arg: int) -> Any:
-                return arg
+                arg.val += 1
+                return -1 if a < b else 1 if a > b else 0
 
         i = T()
-        result = i(elements, -1)
+
+        class ArgClass:
+            def __init__(self, val) -> None:
+                self.val = val
+
+        arg = ArgClass(0)
+        result = i(elements, arg)
         self.assertTrue(isinstance(result, list))
+
+    def test_empty(self):
+        class T(C): ...
+
+        i = T()
+        result = i(elements)
+        self.assertTrue(isinstance(result, type(elements)))
 
 
 if __name__ == "__main__":
