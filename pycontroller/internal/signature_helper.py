@@ -78,6 +78,7 @@ class SignatureHelper:
     def full_call_arg_spec(self) -> inspect.FullArgSpec:
         if self.is_staticmethod:
             return self.spec
+
         # remove the self argument
         return inspect.FullArgSpec(
             args=self.spec.args[1:],

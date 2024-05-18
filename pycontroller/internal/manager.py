@@ -1,276 +1,11 @@
 import ast
-import sys
-import warnings
-from abc import ABC, abstractmethod
 from functools import cmp_to_key
 from heapq import nsmallest as _heapq_nsmallest
-from typing import Callable, List, Tuple
+from typing import Any, Callable, Dict, List
 
-from pycontroller.internal.signature_helper import SignatureHelper
-
-PARTITION_NAME = "partition"
-CHOSEN_NAME = "chosen"
-PREFERENCE_SELF_NAME = "a"
-PREFERENCE_OTHER_NAME = "b"
-GENERATED_FUNCTION_NAME = "call_fn"
-GENERATED_ACTION_FN_NAME = "_action"
-GENERATED_FILTER_FN_NAME = "_filter"
-GENERATED_PREFERENCE_FN_NAME = "_preference"
-CLASS_ARG_NAME = "self"
-POSITIONAL_ARG_PREFIX = "arg_"
-VAR_ARG_NAME = "args"
-KWARG_NAME = "kwargs"
-MANGLED_KWARG_NAME = "_mangled_ctrl_kwd_"
-
-ACTION_FN_NAME = "action"
-FILTER_FN_NAME = "filter"
-PREFERENCE_FN_NAME = "preference"
-CONTROLLED_METHODS = [ACTION_FN_NAME, FILTER_FN_NAME, PREFERENCE_FN_NAME]
-
-
-class ControlledMethod(ABC):
-    current_setup_instructions_lineno = 0
-
-    def __init__(self, fn: Callable) -> None:
-        self.fn = fn
-        self.signature = SignatureHelper(self.fn)
-
-    @abstractmethod
-    def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
-        pass
-
-    @abstractmethod
-    def get_min_required_call_args(self) -> int:
-        pass
-
-    def get_new_lineno(self):
-        self.current_setup_instructions_lineno += 1
-        return self.current_setup_instructions_lineno
-
-
-class Action(ControlledMethod):
-    def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
-        # Create the nodes for the function name and the argument
-        func_name = ast.Name(id=GENERATED_ACTION_FN_NAME, ctx=ast.Load())
-
-        args = []
-        args.append(ast.arg(arg=CHOSEN_NAME, annotation=None))
-        args.extend(
-            ControllerManager.generate_positional_args(
-                len(self.signature.non_class_positional_args)
-                - self.get_min_required_call_args()
-            )
-        )
-        if self.signature.has_arg_unpack:
-            args.append(
-                ast.Starred(
-                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
-                )
-            )
-
-        kwargs = []
-        for keyword, default in self.signature.keyword_arguments:
-            kwargs.append(
-                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
-            )
-        if self.signature.has_kwarg_unpack:
-            kwargs.append(
-                ast.keyword(
-                    arg=None,  # `arg` must be None for **kwargs
-                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
-                )
-            )
-
-        # Create the function call node
-        call = ast.Call(func=func_name, args=args, keywords=kwargs)
-
-        setup_statement = ast.Assign(
-            targets=[ast.Name(id=GENERATED_ACTION_FN_NAME, ctx=ast.Store())],
-            value=ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=ACTION_FN_NAME,
-                ctx=ast.Load(),
-            ),
-            lineno=self.get_new_lineno(),
-        )
-        return call, [setup_statement]
-
-    def get_min_required_call_args(self) -> int:
-        return 1  # chosen
-
-
-class Filter(ControlledMethod):
-    def generate_expression(self) -> Tuple[ast.expr, List[ast.stmt]]:
-        # Create the nodes for the function name and the arguments
-        filter_name = ast.Name(id="filter", ctx=ast.Load())
-
-        args = []
-        args.append(ast.arg(arg=CHOSEN_NAME, annotation=None))
-        args.extend(
-            ControllerManager.generate_positional_args(
-                len(self.signature.non_class_positional_args)
-                - self.get_min_required_call_args()
-            )
-        )
-        if self.signature.has_arg_unpack:
-            args.append(
-                ast.Starred(
-                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
-                )
-            )
-
-        kwargs = []
-        for keyword, default in self.signature.keyword_arguments:
-            kwargs.append(
-                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
-            )
-        if self.signature.has_kwarg_unpack:
-            kwargs.append(
-                ast.keyword(
-                    arg=None,  # `arg` must be None for **kwargs
-                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
-                )
-            )
-
-        elements_arg = ast.Name(id=PARTITION_NAME, ctx=ast.Load())
-        if len(args) + len(kwargs) > self.get_min_required_call_args():
-            # just do a generator expression (i for i in PARTITION if filter(i, *args, **kwargs))
-            # Construct the generator expression
-            filter_fn_name = ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Load())
-
-            call = ast.GeneratorExp(
-                elt=ast.Name(id=CHOSEN_NAME, ctx=ast.Load()),
-                generators=[
-                    ast.comprehension(
-                        target=ast.Name(id=CHOSEN_NAME, ctx=ast.Load()),
-                        iter=elements_arg,
-                        ifs=[ast.Call(func=filter_fn_name, args=args, keywords=kwargs)],
-                        is_async=False,
-                    )
-                ],
-            )
-        else:
-            filter_fn_name = ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()), attr=FILTER_FN_NAME
-            )
-            # Create the function call node
-            call = ast.Call(
-                func=filter_name, args=[filter_fn_name, elements_arg], keywords=[]
-            )
-
-        setup_statement = ast.Assign(
-            targets=[ast.Name(id=GENERATED_FILTER_FN_NAME, ctx=ast.Store())],
-            value=ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=FILTER_FN_NAME,
-                ctx=ast.Load(),
-            ),
-            lineno=self.get_new_lineno(),
-        )
-        return call, [setup_statement]
-
-    def get_min_required_call_args(self) -> int:
-        return 1  # chosen
-
-
-class Preference(ControlledMethod):
-    def generate_expression(
-        self, get_elements_expression: ast.expr
-    ) -> Tuple[ast.expr, List[ast.stmt]]:
-        setup_statements = []
-
-        # Create the nodes for the function names and the arguments
-        nsmallest_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
-        max_size = ast.Constant(value=sys.maxsize, kind=int)
-
-        args = []
-        args.append(ast.arg(arg=PREFERENCE_SELF_NAME, annotation=None))
-        args.append(ast.arg(arg=PREFERENCE_OTHER_NAME, annotation=None))
-        args.extend(
-            ControllerManager.generate_positional_args(
-                len(self.signature.non_class_positional_args)
-                - self.get_min_required_call_args()
-            )
-        )
-        if self.signature.has_arg_unpack:
-            args.append(
-                ast.Starred(
-                    value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
-                )
-            )
-
-        kwargs = []
-        for keyword, default in self.signature.keyword_arguments:
-            kwargs.append(
-                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
-            )
-        if self.signature.has_kwarg_unpack:
-            kwargs.append(
-                ast.keyword(
-                    arg=None,  # `arg` must be None for **kwargs
-                    value=ast.Name(id=KWARG_NAME, ctx=ast.Load()),
-                )
-            )
-
-        if len(args) + len(kwargs) > self.get_min_required_call_args():
-            preference_fn_name_original = ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=PREFERENCE_FN_NAME,
-            )
-            call = ast.Call(
-                func=preference_fn_name_original, args=args, keywords=kwargs
-            )
-            # Lambda function: lambda x: _pref_fn(x, arg0, kwarg1=kwarg1)
-            lambda_node = ast.Lambda(
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[
-                        ast.arg(arg=PREFERENCE_SELF_NAME, annotation=None),
-                        ast.arg(arg=PREFERENCE_OTHER_NAME, annotation=None),
-                    ],
-                    vararg=None,
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                body=call,
-            )
-
-            preference_fn_name = ast.Name(
-                id=GENERATED_PREFERENCE_FN_NAME, ctx=ast.Store()
-            )
-            preference_fn = ast.Assign(
-                targets=[preference_fn_name],
-                value=lambda_node,
-                lineno=self.get_new_lineno(),
-            )
-            setup_statements.append(preference_fn)
-
-        else:
-            preference_fn_name = ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=PREFERENCE_FN_NAME,
-            )
-
-        cmp_to_key_name = ast.Name(id="_cmp_to_key", ctx=ast.Load())
-        key_arg = ast.keyword(
-            arg="key",
-            value=ast.Call(
-                func=cmp_to_key_name, args=[preference_fn_name], keywords=[]
-            ),
-        )
-
-        # Create the function call node
-        call = ast.Call(
-            func=nsmallest_name,
-            args=[max_size, get_elements_expression],
-            keywords=[key_arg],
-        )
-
-        return call, setup_statements
-
-    def get_min_required_call_args(self) -> int:
-        return 2  # a, b
+from pycontroller.internal.controlled_methods import Action, Filter, Preference
+from pycontroller.internal.namespace import *
+from pycontroller.internal.utils import generate_positional_args
 
 
 class ControllerManager:
@@ -309,23 +44,30 @@ class ControllerManager:
         pass
 
     def validate_class_methods(self):
-        pass
-
-    @staticmethod
-    def generate_positional_args(num_args: int) -> List[ast.arg]:
-        args = []
-
-        for i in range(num_args):
-            args.append(
-                ast.arg(
-                    arg=f"{POSITIONAL_ARG_PREFIX}{i}",
-                    annotation=None,
-                    type_comment=None,
+        if self.has_action:
+            if self.action.get_min_required_call_args() > len(
+                self.action.signature.full_call_arg_spec.args
+            ):
+                raise AttributeError(
+                    f"Action signature requires at least {self.action.get_min_required_call_args()} positional parameter(s)."
                 )
-            )
-        return args
+        if self.has_filter:
+            if self.filter.get_min_required_call_args() > len(
+                self.filter.signature.full_call_arg_spec.args
+            ):
+                raise AttributeError(
+                    f"Filter signature requires at least {self.filter.get_min_required_call_args()} positional parameter(s)."
+                )
+        if self.has_preference:
+            if self.preference.get_min_required_call_args() > len(
+                self.preference.signature.full_call_arg_spec.args
+            ):
+                raise AttributeError(
+                    f"Preference signature requires at least {self.preference.get_min_required_call_args()} positional parameter(s)."
+                )
 
     def get_call_signature_args(self) -> ast.arguments:
+        # signature variables
         posonlyargs = []
         args = []
         kwonlyargs = []
@@ -367,14 +109,34 @@ class ControllerManager:
                 arg_difference,
                 pos_args_to_generate,
             )
-        args.extend(self.generate_positional_args(pos_args_to_generate))
+        args.extend(generate_positional_args(pos_args_to_generate))
 
+        # defined as an inner function to pass args and saved_global_kwargs into the namespace
         def _should_include_arg(
-            keyword,
-            default,
-            args=args,
-            saved_global_kwargs=self.saved_global_kwargs,
+            keyword: str,
+            default: Any,
+            args: List[ast.arg] = args,
+            saved_global_kwargs: Dict[str, Any] = self.saved_global_kwargs,
         ) -> bool:
+            """
+            Checks if a keyword argument already exists with the same default value. If it exists,
+            return False since the keyword argument is already taken care of. If it does not exist,
+            return True since it should be added. If the keyword argument exists and has a different
+            (decided by == (__eq__) operator) default value, raise an exception because they must be
+            the same default.
+
+            Args:
+                keyword (str): keyword argument in question
+                default (Any): default value for the keyword in question
+                args (List[ast.arg], optional): arguments that have already been added. Defaults to args.
+                saved_global_kwargs (Dict[str, Any], optional): saved defaults. Defaults to self.saved_global_kwargs.
+
+            Raises:
+                AttributeError: Duplicate keyword arguments must have equivalent default values.
+
+            Returns:
+                bool: Should include in args list
+            """
             _args = [arg.arg for arg in args]
             if keyword in _args:
                 _ctrl_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
@@ -435,6 +197,7 @@ class ControllerManager:
         if has_kwarg:
             kwarg = ast.arg(arg=KWARG_NAME, annotation=None)
 
+        # create the signatures arguments
         func_args = ast.arguments(
             posonlyargs=posonlyargs,
             args=args,
@@ -481,7 +244,6 @@ class ControllerManager:
 
         return_statement = ast.Return(generator_expr)
         body_code = setup_statements + [return_statement]
-
         signature_args = self.get_call_signature_args()
         call_fn = ast.FunctionDef(
             name=GENERATED_FUNCTION_NAME,
