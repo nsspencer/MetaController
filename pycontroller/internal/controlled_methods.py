@@ -160,13 +160,20 @@ class Filter(ControlledMethod):
 
 
 class Preference(ControlledMethod):
+    def __init__(self, fn: Callable[..., Any], sort_reverse: bool) -> None:
+        super().__init__(fn)
+        self.sort_reverse = sort_reverse
+
     def generate_expression(
         self, get_elements_expression: ast.expr
     ) -> Tuple[ast.expr, List[ast.stmt]]:
         setup_statements = []
 
         # Create the nodes for the function names and the arguments
-        nsmallest_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
+        if self.sort_reverse:
+            sort_fn_name = ast.Name(id="_heapq_nlargest", ctx=ast.Load())
+        else:
+            sort_fn_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
         max_size = ast.Constant(value=sys.maxsize, kind=int)
 
         args = []
@@ -248,7 +255,7 @@ class Preference(ControlledMethod):
 
         # Create the function call node
         call = ast.Call(
-            func=nsmallest_name,
+            func=sort_fn_name,
             args=[max_size, get_elements_expression],
             keywords=[key_arg],
         )

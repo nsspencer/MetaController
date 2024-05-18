@@ -1,5 +1,6 @@
 import ast
 from functools import cmp_to_key
+from heapq import nlargest as _heapq_nlargest
 from heapq import nsmallest as _heapq_nsmallest
 from typing import Any, Callable, Dict, List
 
@@ -31,7 +32,7 @@ class ControllerManager:
             else None
         )
         self.preference = (
-            Preference(controlled_methods[PREFERENCE_FN_NAME])
+            Preference(controlled_methods[PREFERENCE_FN_NAME], cls.sort_reverse)
             if controlled_methods.get(PREFERENCE_FN_NAME, None) is not None
             else None
         )
@@ -41,7 +42,19 @@ class ControllerManager:
         self.assign_call_method(self.generate_call_method())
 
     def validate_class_attributes(self):
-        pass
+        self.controller.sort_with_key = bool(self.controller.sort_with_key)
+        if self.controller.sort_with_key:
+            if self.has_preference:
+                raise ValueError(
+                    'Cannot use "sort_with_key" and define a "preference" at the same time.'
+                )
+
+        self.controller.sort_reverse = bool(self.controller.sort_reverse)
+        if self.controller.sort_reverse:
+            if not self.has_preference and not self.controller.sort_with_key:
+                raise ValueError(
+                    'Cannot use "sort_reverse" without a "preference" or "sort_with_key" defined.'
+                )
 
     def validate_class_methods(self):
         if self.has_action:
@@ -230,6 +243,18 @@ class ControllerManager:
             )
             setup_statements.extend(_setup_stmt)
 
+        elif self.controller.sort_with_key == True:
+            keywords = []
+            if self.controller.sort_reverse == True:
+                keywords.append(ast.keyword(arg="reverse", value=ast.Constant(True)))
+
+            # Create the function call node
+            get_elements = ast.Call(
+                func=ast.Name(id="sorted", ctx=ast.Load()),
+                args=[get_elements],
+                keywords=keywords,
+            )
+
         # can switch this with ast.GeneratorExp for generator
         generator_expr = get_elements
         if self.has_action:
@@ -263,7 +288,11 @@ class ControllerManager:
         )
 
         self.generated_call_fn = ast.unparse(call_fn)
-        _globals = {"_heapq_nsmallest": _heapq_nsmallest, "_cmp_to_key": cmp_to_key}
+        _globals = {
+            "_heapq_nsmallest": _heapq_nsmallest,
+            "_cmp_to_key": cmp_to_key,
+            "_heapq_nlargest": _heapq_nlargest,
+        }
         _globals.update(self.saved_global_kwargs)
         _locals = {}
         eval(
