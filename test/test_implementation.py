@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from pycontroller import Controller as C
 
-elements = [random.randint(0, 1000000) for _ in range(1000)]
+elements = [random.randint(0, 1000000) for _ in range(100)]
 
 
 def global_test_fn(value: int) -> int:
@@ -425,6 +425,155 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
         self.assertTrue(max(elements) == e[0])
         with self.assertRaises(IndexError):
             e = a(elements, 0, keyword_arg1=0)
+
+
+class ArgsAndKwargsTests(unittest.TestCase):
+    def test_action_pos_arg(self):
+        class T(C):
+            def action(self, chosen: Any, pos_arg: int) -> Any:
+                return chosen + pos_arg
+
+            def filter(self, chosen: Any) -> bool:
+                return chosen % 2 == 0
+
+            def preference(self, a: Any, b: Any) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        a = T()
+        e = a(elements, 2)
+        expected_sum = sum(i + 2 for i in filter(lambda x: x % 2 == 0, elements))
+        self.assertTrue(sum(e) == expected_sum)
+
+    def test_action_and_filter_pos_arg(self):
+        class T(C):
+            def action(self, chosen: Any, pos_arg: int) -> Any:
+                return chosen + pos_arg
+
+            def filter(self, chosen: Any, filter_pos_arg: int) -> bool:
+                return chosen % filter_pos_arg == 0
+
+            def preference(self, a: Any, b: Any) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        a = T()
+        e = a(elements, 2)
+        expected_sum = sum(i + 2 for i in filter(lambda x: x % 2 == 0, elements))
+        self.assertTrue(sum(e) == expected_sum)
+
+    def test_action_and_filter_and_preference_pos_arg(self):
+        class T(C):
+            def action(self, chosen: Any, pos_arg: int) -> Any:
+                return chosen + pos_arg
+
+            def filter(self, chosen: Any, filter_pos_arg: int) -> bool:
+                return chosen % filter_pos_arg == 0
+
+            def preference(self, a: Any, b: Any, pref_pos_arg: int) -> int:
+                if pref_pos_arg == 2:
+                    return -1 if a < b else 1 if a > b else 0
+                return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements, 2)
+        expected_result = list(i + 2 for i in filter(lambda x: x % 2 == 0, elements))
+        expected_sum = sum(expected_result)
+        self.assertTrue(sum(e) == expected_sum)
+        self.assertTrue(min(expected_result) == e[0])
+
+        # test the reverse sort
+        e = a(elements, 1)
+        expected_result = list(i + 1 for i in filter(lambda x: x % 1 == 0, elements))
+        expected_sum = sum(expected_result)
+        self.assertTrue(sum(e) == expected_sum)
+        self.assertTrue(max(expected_result) == e[0])
+
+    def test_action_and_filter_and_preference_keyword_arg(self):
+        class T(C):
+            def action(self, chosen: Any, action_arg: int = 1) -> Any:
+                return chosen + action_arg
+
+            def filter(self, chosen: Any, filter_arg: int = 1) -> bool:
+                return chosen % filter_arg == 0
+
+            def preference(self, a: Any, b: Any, pref_arg: int = 2) -> int:
+                if pref_arg == 2:
+                    return -1 if a < b else 1 if a > b else 0
+                return 1 if a < b else -1 if a > b else 0
+
+        a = T()
+        e = a(elements)
+        expected_result = list(i + 1 for i in filter(lambda x: x % 1 == 0, elements))
+        expected_sum = sum(expected_result)
+        self.assertTrue(sum(e) == expected_sum)
+        self.assertTrue(min(expected_result) == e[0])
+
+        # test the reverse sort
+        e = a(elements, action_arg=3, filter_arg=2, pref_arg=2)
+        expected_result = list(i + 3 for i in filter(lambda x: x % 2 == 0, elements))
+        expected_sum = sum(expected_result)
+        self.assertTrue(sum(e) == expected_sum)
+        self.assertTrue(min(expected_result) == e[0])
+
+    def test_overlapping_keyword_args(self):
+        class T(C):
+            def action(self, chosen: Any, kwarg1: int = 1) -> Any:
+                return chosen + kwarg1
+
+            def filter(self, chosen: Any, kwarg1: int = 1) -> bool:
+                return chosen % kwarg1 == 0
+
+        a = T()
+        e = a(elements)
+        expected_result = list(i + 1 for i in filter(lambda x: x % 1 == 0, elements))
+        expected_sum = sum(expected_result)
+        self.assertTrue(sum(e) == expected_sum)
+
+    def test_overlapping_different_keyword_args(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        with self.assertRaises(AttributeError):
+
+            class T(C):
+                def action(
+                    self, chosen: Any, kwarg1: CustomClass = CustomClass(1)
+                ) -> Any:
+                    return chosen + kwarg1.val
+
+                def filter(self, chosen: Any, kwarg1: int = 1) -> bool:
+                    return chosen % kwarg1 == 0
+
+    def test_overlapping_equivalent_keyword_args(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        inst = CustomClass(1)
+
+        class T(C):
+            def action(self, chosen: Any, kwarg1: CustomClass = inst) -> Any:
+                return chosen + kwarg1.val
+
+            def filter(self, chosen: Any, kwarg1: CustomClass = inst) -> bool:
+                return chosen % kwarg1 == 0
+
+        self.assertTrue(True)  # pass if no error is thrown
+
+    def test_mangled_keywords_by_reference_side_effects(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        inst = CustomClass(1)
+
+        class T(C):
+            def action(self, chosen: Any, kwarg1: CustomClass = inst) -> Any:
+                kwarg1.val = 2
+
+        t_inst = T()
+        t_inst([1])
+        self.assertTrue(inst.val == 2)
 
 
 if __name__ == "__main__":

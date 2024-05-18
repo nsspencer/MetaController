@@ -1,5 +1,6 @@
 import ast
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from functools import cmp_to_key
 from heapq import nsmallest as _heapq_nsmallest
@@ -19,6 +20,7 @@ CLASS_ARG_NAME = "self"
 POSITIONAL_ARG_PREFIX = "arg_"
 VAR_ARG_NAME = "args"
 KWARG_NAME = "kwargs"
+MANGLED_KWARG_NAME = "_mangled_ctrl_kwd_"
 
 ACTION_FN_NAME = "action"
 FILTER_FN_NAME = "filter"
@@ -278,6 +280,7 @@ class ControllerManager:
         self.name = name
         self.attrs = attrs
         self.generated_call_fn = None
+        self.saved_global_kwargs = {}
 
         controlled_methods = {
             k: v for k, v in attrs.items() if callable(v) and k in CONTROLLED_METHODS
@@ -366,19 +369,47 @@ class ControllerManager:
             )
         args.extend(self.generate_positional_args(pos_args_to_generate))
 
+        def _should_include_arg(
+            keyword,
+            default,
+            args=args,
+            saved_global_kwargs=self.saved_global_kwargs,
+        ) -> bool:
+            _args = [arg.arg for arg in args]
+            if keyword in _args:
+                _ctrl_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
+                if _ctrl_keyword_name in saved_global_kwargs:
+                    val = saved_global_kwargs[_ctrl_keyword_name]
+                if default == val:
+                    return False
+                else:
+                    raise AttributeError(
+                        f'Duplicate keyword argument "{keyword}" with different default values. Shared keyword arguments must have the same default value. Equality is checked with the __eq__ operator.'
+                    )
+            return True
+
         # get the keyword arguments
         if self.has_action:
             for keyword, default in self.action.signature.keyword_arguments:
-                args.append(ast.arg(arg=keyword, annotation=None))
-                defaults.append(ast.Constant(default))
+                if _should_include_arg(keyword, default):
+                    args.append(ast.arg(arg=keyword, annotation=None))
+                    global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
+                    self.saved_global_kwargs[global_keyword_name] = default
+                    defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
         if self.has_filter:
             for keyword, default in self.filter.signature.keyword_arguments:
-                args.append(ast.arg(arg=keyword, annotation=None))
-                defaults.append(ast.Constant(default))
+                if _should_include_arg(keyword, default):
+                    args.append(ast.arg(arg=keyword, annotation=None))
+                    global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
+                    self.saved_global_kwargs[global_keyword_name] = default
+                    defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
         if self.has_preference:
             for keyword, default in self.preference.signature.keyword_arguments:
-                args.append(ast.arg(arg=keyword, annotation=None))
-                defaults.append(ast.Constant(default))
+                if _should_include_arg(keyword, default):
+                    args.append(ast.arg(arg=keyword, annotation=None))
+                    global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
+                    self.saved_global_kwargs[global_keyword_name] = default
+                    defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
 
         # check for arg unpacks
         var_arg = None
@@ -464,6 +495,7 @@ class ControllerManager:
 
         self.generated_call_fn = ast.unparse(call_fn)
         _globals = {"_heapq_nsmallest": _heapq_nsmallest, "_cmp_to_key": cmp_to_key}
+        _globals.update(self.saved_global_kwargs)
         _locals = {}
         eval(
             compile(self.generated_call_fn, filename="<ast>", mode="exec"),

@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable
 
 from .internal.metaclass import MetaController as __MetaController
 
