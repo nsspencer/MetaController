@@ -55,6 +55,13 @@ class ControllerManager:
                 raise ValueError(
                     'Cannot use "sort_reverse" without a "preference" or "sort_with_key" defined.'
                 )
+        if (
+            self.controller.fixed_max_chosen is not None
+            and self.controller.dynamic_max_chosen is True
+        ):
+            raise ValueError(
+                'Cannot set "fixed_max_chosen" value and also use "dynamic_max_chosen".'
+            )
 
     def validate_class_methods(self):
         if self.has_action:
