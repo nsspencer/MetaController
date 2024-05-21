@@ -11,6 +11,7 @@ POSITIONAL_ARG_PREFIX = "arg_"
 VAR_ARG_NAME = "args"
 KWARG_NAME = "kwargs"
 MANGLED_KWARG_NAME = "_mangled_ctrl_kwd_"
+MAX_CHOSEN_ARG_NAME = "k"
 
 ACTION_FN_NAME = "action"
 FILTER_FN_NAME = "filter"

@@ -2,6 +2,7 @@ import ast
 from functools import cmp_to_key
 from heapq import nlargest as _heapq_nlargest
 from heapq import nsmallest as _heapq_nsmallest
+from itertools import islice as _itertools_islice
 from typing import Any, Callable, Dict, List
 
 from pycontroller.internal.controlled_methods import Action, Filter, Preference
@@ -11,12 +12,16 @@ from pycontroller.internal.utils import generate_positional_args
 
 class ControllerManager:
 
-    def __init__(self, cls, name, attrs) -> None:
+    def __init__(self, cls, name: str, attrs: dict, previous_frame) -> None:
         self.controller = cls
         self.name = name
         self.attrs = attrs
         self.generated_call_fn = None
         self.saved_global_kwargs = {}
+        self.max_chosen_handled = False
+
+        # Get local and global variables from the previous frame
+        self.previous_frame = previous_frame
 
         controlled_methods = {
             k: v for k, v in attrs.items() if callable(v) and k in CONTROLLED_METHODS
@@ -32,7 +37,11 @@ class ControllerManager:
             else None
         )
         self.preference = (
-            Preference(controlled_methods[PREFERENCE_FN_NAME], cls.sort_reverse)
+            Preference(
+                controlled_methods[PREFERENCE_FN_NAME],
+                cls.sort_with_key,
+                cls.sort_reverse,
+            )
             if controlled_methods.get(PREFERENCE_FN_NAME, None) is not None
             else None
         )
@@ -78,6 +87,7 @@ class ControllerManager:
                 raise AttributeError(
                     f"Filter signature requires at least {self.filter.get_min_required_call_args()} positional parameter(s)."
                 )
+
         if self.has_preference:
             if self.preference.get_min_required_call_args() > len(
                 self.preference.signature.full_call_arg_spec.args
@@ -98,6 +108,10 @@ class ControllerManager:
         class_arg = ast.arg(arg=CLASS_ARG_NAME, annotation=None, type_comment=None)
         partition_arg = ast.arg(arg=PARTITION_NAME, annotation=None, type_comment=None)
         args.append(class_arg)
+        if self.controller.dynamic_max_chosen:
+            args.append(
+                ast.arg(arg=MAX_CHOSEN_ARG_NAME, annotation=None, type_comment=None)
+            )
         args.append(partition_arg)
 
         # generate positional args
@@ -233,24 +247,38 @@ class ControllerManager:
         get_elements = ast.Name(id=PARTITION_NAME, ctx=ast.Load())
         setup_statements = []
 
-        chosen_element = ast.Name(id=CHOSEN_NAME, ctx=ast.Load())
-        if self.has_action:
-            action, _setup_stmt = self.action.generate_expression()
-            setup_statements.extend(_setup_stmt)
-        else:
-            action = chosen_element
+        max_chosen_element = None
+        if self.controller.fixed_max_chosen:
+            max_chosen_element = ast.Constant(
+                value=self.controller.fixed_max_chosen, kind=int
+            )
+        elif self.controller.dynamic_max_chosen:
+            max_chosen_element = ast.Name(id=MAX_CHOSEN_ARG_NAME, ctx=ast.Load())
 
         if self.has_filter:
-            get_elements, _setup_statements = self.filter.generate_expression()
+            if not self.has_preference:
+                _max_chosen = max_chosen_element
+            else:
+                _max_chosen = None
+            get_elements, _setup_statements = self.filter.generate_expression(
+                get_elements, _max_chosen
+            )
             setup_statements.extend(_setup_statements)
+            _max_chosen = None
 
         if self.has_preference:
             get_elements, _setup_stmt = self.preference.generate_expression(
-                get_elements
+                get_elements, max_chosen_element
             )
             setup_statements.extend(_setup_stmt)
+            max_chosen_element = None
 
         elif self.controller.sort_with_key == True:
+            ###
+            # special case for defining preference without a preference function,
+            # using the built in comparison dunder methods of the objects in
+            # the partition.
+            #
             keywords = []
             if self.controller.sort_reverse == True:
                 keywords.append(ast.keyword(arg="reverse", value=ast.Constant(True)))
@@ -262,19 +290,22 @@ class ControllerManager:
                 keywords=keywords,
             )
 
-        # can switch this with ast.GeneratorExp for generator
-        generator_expr = get_elements
         if self.has_action:
-            generator_expr = ast.ListComp(
-                elt=action,
-                generators=[
-                    ast.comprehension(
-                        target=chosen_element, iter=get_elements, ifs=[], is_async=0
-                    )
-                ],
+            get_elements, _setup_stmt = self.action.generate_expression(
+                get_elements, max_chosen_element
+            )
+            setup_statements.extend(_setup_stmt)
+            max_chosen_element = None
+
+        if max_chosen_element:
+            get_elements = ast.Call(
+                func=ast.Name(id="_itertools_islice", ctx=ast.Load()),
+                args=[get_elements, max_chosen_element],
+                keywords=[],
             )
 
-        if self.has_filter and not self.has_action and not self.has_preference:
+        generator_expr = get_elements
+        if self.has_action or self.has_filter or max_chosen_element is not None:
             generator_expr = ast.Call(
                 func=ast.Name(id="list", ctx=ast.Load()),
                 args=[generator_expr],
@@ -295,11 +326,17 @@ class ControllerManager:
         )
 
         self.generated_call_fn = ast.unparse(call_fn)
-        _globals = {
-            "_heapq_nsmallest": _heapq_nsmallest,
-            "_cmp_to_key": cmp_to_key,
-            "_heapq_nlargest": _heapq_nlargest,
-        }
+
+        _globals = self.previous_frame.f_globals
+        _globals.update(self.previous_frame.f_locals)
+        _globals.update(
+            {
+                "_heapq_nsmallest": _heapq_nsmallest,
+                "_cmp_to_key": cmp_to_key,
+                "_heapq_nlargest": _heapq_nlargest,
+                "_itertools_islice": _itertools_islice,
+            }
+        )
         _globals.update(self.saved_global_kwargs)
         _locals = {}
         eval(

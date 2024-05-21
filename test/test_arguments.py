@@ -171,9 +171,9 @@ class FilterArgumentImplementationTests(unittest.TestCase):
 
     def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
         class T(C):
-            def filter(self, chosen: Any, arg0, *args, keyword_arg, **kwargs) -> bool:
+            def filter(self, chosen: Any, arg0, *args, keyword_arg=0, **my_kwargs) -> bool:
                 assert arg0 == args[0]
-                assert keyword_arg == kwargs["keyword_arg2"]
+                assert keyword_arg == my_kwargs["keyword_arg2"]
                 return chosen % arg0 == keyword_arg
 
         a = T()
