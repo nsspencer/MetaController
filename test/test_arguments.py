@@ -171,7 +171,9 @@ class FilterArgumentImplementationTests(unittest.TestCase):
 
     def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
         class T(C):
-            def filter(self, chosen: Any, arg0, *args, keyword_arg=0, **my_kwargs) -> bool:
+            def filter(
+                self, chosen: Any, arg0, *args, keyword_arg=0, **my_kwargs
+            ) -> bool:
                 assert arg0 == args[0]
                 assert keyword_arg == my_kwargs["keyword_arg2"]
                 return chosen % arg0 == keyword_arg
@@ -184,7 +186,7 @@ class FilterArgumentImplementationTests(unittest.TestCase):
 class PreferenceArgumentImplementationTests(unittest.TestCase):
     def test_positional_arg(self):
         class T(C):
-            def preference(self, a: Any, b: Any, pos_arg: int) -> int:
+            def preference_cmp(self, a: Any, b: Any, pos_arg: int) -> int:
                 if pos_arg == 1:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -198,7 +200,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_keyword_arg(self):
         class T(C):
-            def preference(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
+            def preference_cmp(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
                 if keyword_arg == 1:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -212,7 +214,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_keyword_arg_default(self):
         class T(C):
-            def preference(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
+            def preference_cmp(self, a: Any, b: Any, keyword_arg: int = 1) -> int:
                 if keyword_arg == 1:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -226,7 +228,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_positional_and_keyword_arg(self):
         class T(C):
-            def preference(
+            def preference_cmp(
                 self, a: Any, b: Any, pos_arg: int, keyword_arg: int = 1
             ) -> int:
                 if pos_arg == keyword_arg:
@@ -242,7 +244,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_arg_unpack(self):
         class T(C):
-            def preference(self, a: Any, b: Any, *args) -> int:
+            def preference_cmp(self, a: Any, b: Any, *args) -> int:
                 if args[0] == 1:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -256,7 +258,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_kwarg_unpack(self):
         class T(C):
-            def preference(self, a: Any, b: Any, **kwargs) -> int:
+            def preference_cmp(self, a: Any, b: Any, **kwargs) -> int:
                 if kwargs["keyword_arg"] == 1:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -270,7 +272,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_arg_and_kwarg_unpack(self):
         class T(C):
-            def preference(self, a: Any, b: Any, *args, **kwargs) -> int:
+            def preference_cmp(self, a: Any, b: Any, *args, **kwargs) -> int:
                 if args[0] == kwargs["keyword_arg"]:
                     return -1 if a < b else 1 if a > b else 0
                 else:
@@ -284,7 +286,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
 
     def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
         class T(C):
-            def preference(
+            def preference_cmp(
                 self,
                 a: Any,
                 b: Any,
@@ -316,7 +318,7 @@ class ArgsAndKwargsTests(unittest.TestCase):
             def filter(self, chosen: Any) -> bool:
                 return chosen % 2 == 0
 
-            def preference(self, a: Any, b: Any) -> int:
+            def preference_cmp(self, a: Any, b: Any) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         a = T()
@@ -332,7 +334,7 @@ class ArgsAndKwargsTests(unittest.TestCase):
             def filter(self, chosen: Any, filter_pos_arg: int) -> bool:
                 return chosen % filter_pos_arg == 0
 
-            def preference(self, a: Any, b: Any) -> int:
+            def preference_cmp(self, a: Any, b: Any) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         a = T()
@@ -348,7 +350,7 @@ class ArgsAndKwargsTests(unittest.TestCase):
             def filter(self, chosen: Any, filter_pos_arg: int) -> bool:
                 return chosen % filter_pos_arg == 0
 
-            def preference(self, a: Any, b: Any, pref_pos_arg: int) -> int:
+            def preference_cmp(self, a: Any, b: Any, pref_pos_arg: int) -> int:
                 if pref_pos_arg == 2:
                     return -1 if a < b else 1 if a > b else 0
                 return 1 if a < b else -1 if a > b else 0
@@ -375,7 +377,7 @@ class ArgsAndKwargsTests(unittest.TestCase):
             def filter(self, chosen: Any, filter_arg: int = 1) -> bool:
                 return chosen % filter_arg == 0
 
-            def preference(self, a: Any, b: Any, pref_arg: int = 2) -> int:
+            def preference_cmp(self, a: Any, b: Any, pref_arg: int = 2) -> int:
                 if pref_arg == 2:
                     return -1 if a < b else 1 if a > b else 0
                 return 1 if a < b else -1 if a > b else 0

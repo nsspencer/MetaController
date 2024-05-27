@@ -34,7 +34,7 @@ class TestReturnTypes(unittest.TestCase):
 
     def test_preference(self):
         class T(C):
-            def preference(self, a, b) -> Any:
+            def preference_cmp(self, a, b) -> Any:
                 return -1
 
         i = T()
@@ -61,7 +61,7 @@ class TestReturnTypes(unittest.TestCase):
 
     def test_preference_arg(self):
         class T(C):
-            def preference(self, a, b, arg: int) -> Any:
+            def preference_cmp(self, a, b, arg: int) -> Any:
                 arg.val += 1
                 return -1 if a < b else 1 if a > b else 0
 

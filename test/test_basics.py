@@ -47,7 +47,7 @@ class BasicImplementationTest(unittest.TestCase):
 
     def test_preference(self):
         class T(C):
-            def preference(self, a: int, b: int) -> int:
+            def preference_cmp(self, a: int, b: int) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()
@@ -75,7 +75,7 @@ class BasicImplementationTest(unittest.TestCase):
             def action(self, chosen: int) -> int:
                 return chosen + 1
 
-            def preference(self, a: int, b: int) -> int:
+            def preference_cmp(self, a: int, b: int) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()
@@ -91,7 +91,7 @@ class BasicImplementationTest(unittest.TestCase):
             def filter(self, chosen: int) -> bool:
                 return chosen % 2 == 0
 
-            def preference(self, a: int, b: int) -> int:
+            def preference_cmp(self, a: int, b: int) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()
@@ -110,7 +110,7 @@ class BasicImplementationTest(unittest.TestCase):
             def filter(self, chosen: int) -> bool:
                 return chosen % 2 == 0
 
-            def preference(self, a: int, b: int) -> int:
+            def preference_cmp(self, a: int, b: int) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()

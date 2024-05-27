@@ -14,9 +14,10 @@ class ControlledMethod(ABC):
     __slots__ = "fn", "signature"
     current_setup_instructions_lineno = 0
 
-    def __init__(self, fn: Callable) -> None:
+    def __init__(self, fn: Callable, is_debug: bool = False) -> None:
         self.fn = fn
         self.signature = SignatureHelper(self.fn)
+        self.is_debug = is_debug
 
     @abstractmethod
     def generate_expression(
@@ -37,11 +38,11 @@ class ControlledMethod(ABC):
     def generate_wrapped_function(
         self, wrapper_name: str
     ) -> Tuple[ast.Call, ast.FunctionDef]:
-        fn_body = ast.parse(textwrap.dedent(inspect.getsource(self.fn))).body[0].body
-
         required_pos_args = self.signature.full_call_arg_spec.args[
             : self.get_min_required_call_args()
         ]
+
+        fn_body = ast.parse(textwrap.dedent(inspect.getsource(self.fn))).body[0].body
         inner_args = ast.arguments(
             posonlyargs=[],
             args=[ast.arg(arg=arg, annotation=None) for arg in required_pos_args],
@@ -51,14 +52,6 @@ class ControlledMethod(ABC):
             kwarg=[],
             defaults=[],
         )
-        inner_wrapper = ast.FunctionDef(
-            name="inner_fn",
-            args=inner_args,
-            body=fn_body,
-            decorator_list=[],
-            returns=None,
-            lineno=0,
-        )
 
         return_val = ast.Return(value=ast.Name(id="inner_fn", ctx=ast.Load()))
         args = self.fullargspec_to_arguments(self.signature.full_call_arg_spec)
@@ -66,14 +59,6 @@ class ControlledMethod(ABC):
             self.get_min_required_call_args() : -len(args.defaults) or None
         ]
         args.defaults = []
-        wrapper_fn = ast.FunctionDef(
-            name=wrapper_name,
-            args=args,
-            body=[inner_wrapper, return_val],
-            decorator_list=[],
-            returns=None,
-            lineno=self.get_new_lineno(),
-        )
 
         call_args = generate_positional_args(len(args.args))
         call_keywords = []
@@ -88,13 +73,70 @@ class ControlledMethod(ABC):
                 ast.keyword(arg=None, value=ast.Name(id=KWARG_NAME, ctx=ast.Load()))
             )
 
-        # generate the call fn
+        # generate the call function
         call_fn = ast.Call(
             func=ast.Name(wrapper_name, ctx=ast.Load()),
             args=call_args,
             keywords=call_keywords,
         )
 
+        if self.is_debug:
+            # generate a lambda expression to call instead of wrapping the users code.
+            # this allows the users code to be stepped into in a debugger.
+            # NOTE: wrapping the users code in lambdas makes it slower, which is
+            # not preferred, which is why i call it debug mode and force explicit
+            # declaration in the class attributes.
+
+            # first get the keyword args we need to pass to this function
+            specific_call_keywords = self.fullargspec_to_arguments(
+                self.signature.full_call_arg_spec
+            )
+            num_defaults = len(specific_call_keywords.defaults)
+            num_pos_args = len(specific_call_keywords.args) - num_defaults
+            assigned_default_kwargs = []
+            for index, default in enumerate(specific_call_keywords.defaults):
+                matching_keyword = specific_call_keywords.args[num_pos_args + index].arg
+                assigned_default_kwargs.append(
+                    ast.keyword(
+                        arg=matching_keyword,
+                        value=ast.Name(id=matching_keyword, ctx=ast.Load()),
+                    )
+                )
+            call_func = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=self.fn.__name__,
+                    ctx=ast.Load(),
+                ),
+                args=inner_args.args + call_args,
+                keywords=assigned_default_kwargs + call_keywords,
+            )
+            inner_lambda = ast.Lambda(args=inner_args, body=call_func)
+            inner_wrapper = ast.Assign(
+                targets=[ast.Name(id="inner_fn", ctx=ast.Store())],
+                value=inner_lambda,
+                lineno=0,
+            )
+
+        else:  # not debug mode
+            inner_wrapper = ast.FunctionDef(
+                name="inner_fn",
+                args=inner_args,
+                body=fn_body,
+                decorator_list=[],
+                returns=None,
+                lineno=0,
+            )
+
+        # generate the wrapper function
+        wrapper_fn = ast.FunctionDef(
+            name=wrapper_name,
+            args=args,
+            body=[inner_wrapper, return_val],
+            decorator_list=[],
+            returns=None,
+            lineno=self.get_new_lineno(),
+        )
         return call_fn, wrapper_fn
 
     @staticmethod
@@ -237,11 +279,17 @@ class Filter(ControlledMethod):
 
 class Preference(ControlledMethod):
     def __init__(
-        self, fn: Callable[..., Any], sort_with_key: bool, sort_reverse: bool
+        self,
+        fn: Callable[..., Any],
+        simple_sort: bool,
+        reverse_sort: bool,
+        is_comparator: bool = False,
+        is_debug: bool = False,
     ) -> None:
-        super().__init__(fn)
-        self.sort_reverse = sort_reverse
-        self.sort_with_key = sort_with_key
+        super().__init__(fn, is_debug)
+        self.reverse_sort = reverse_sort
+        self.simple_sort = simple_sort
+        self.is_comparator = is_comparator
 
     def generate_expression(
         self,
@@ -261,11 +309,18 @@ class Preference(ControlledMethod):
                 "wrapped_preference"
             )
             setup_statements.append(wrapper)
+
         else:
-            wrapper_call_fn = ast.Attribute(
-                value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=PREFERENCE_FN_NAME,
-            )
+            if self.is_comparator:
+                wrapper_call_fn = ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=PREFERENCE_CMP_FN_NAME,
+                )
+            else:
+                wrapper_call_fn = ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=PREFERENCE_FN_NAME,
+                )
 
         # define the args for the sort method
         sort_args = []
@@ -273,7 +328,7 @@ class Preference(ControlledMethod):
 
         # Create the nodes for the function names and the arguments
         if max_chosen is not None:
-            if self.sort_reverse:
+            if self.reverse_sort:
                 sort_fn_name = ast.Name(id="_heapq_nlargest", ctx=ast.Load())
             else:
                 sort_fn_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
@@ -282,27 +337,33 @@ class Preference(ControlledMethod):
         else:
             sort_fn_name = ast.Name(id="sorted", ctx=ast.Load())
             sort_args += [get_elements_expr]
-            if self.sort_reverse:
+            if self.reverse_sort:
                 sort_kwargs.append(
                     ast.keyword(
                         arg="reverse", value=ast.Constant(value=True, kind=bool)
                     )
                 )
 
-        if not self.sort_with_key:
-            cmp_to_key_name = ast.Name(id="_cmp_to_key", ctx=ast.Load())
-            sort_kwargs.append(
-                ast.keyword(
-                    arg="key",
-                    value=ast.Call(
-                        func=cmp_to_key_name, args=[wrapper_call_fn], keywords=[]
-                    ),
+        if not self.simple_sort:
+            if self.is_comparator:
+                cmp_to_key_name = ast.Name(id="_cmp_to_key", ctx=ast.Load())
+                sort_kwargs.append(
+                    ast.keyword(
+                        arg="key",
+                        value=ast.Call(
+                            func=cmp_to_key_name, args=[wrapper_call_fn], keywords=[]
+                        ),
+                    )
                 )
-            )
+            else:
+                sort_kwargs.append(ast.keyword(arg="key", value=wrapper_call_fn))
 
         call_fn = ast.Call(func=sort_fn_name, args=sort_args, keywords=sort_kwargs)
 
         return call_fn, setup_statements
 
     def get_min_required_call_args(self) -> int:
-        return 2  # a, b
+        if self.is_comparator:
+            return 2  # a, b
+        else:
+            return 1  # chosen

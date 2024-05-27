@@ -26,43 +26,65 @@ class ControllerManager:
         controlled_methods = {
             k: v for k, v in attrs.items() if callable(v) and k in CONTROLLED_METHODS
         }
+
         self.action = (
-            Action(controlled_methods[ACTION_FN_NAME])
+            Action(controlled_methods[ACTION_FN_NAME], is_debug=cls.debug_mode)
             if controlled_methods.get(ACTION_FN_NAME, None) is not None
             else None
         )
+
         self.filter = (
-            Filter(controlled_methods[FILTER_FN_NAME])
+            Filter(controlled_methods[FILTER_FN_NAME], is_debug=cls.debug_mode)
             if controlled_methods.get(FILTER_FN_NAME, None) is not None
             else None
         )
-        self.preference = (
-            Preference(
-                controlled_methods[PREFERENCE_FN_NAME],
-                cls.sort_with_key,
-                cls.sort_reverse,
+
+        # make sure there is only one preference (preference or preference_cmp) defined
+        if (
+            PREFERENCE_CMP_FN_NAME in controlled_methods
+            and PREFERENCE_FN_NAME in controlled_methods
+        ):
+            raise AttributeError(
+                'Cannot define both a "preference" and "preference_cmp" in the same controller. \
+                    "preference" is usually more performant than "preference_cmp"'
             )
-            if controlled_methods.get(PREFERENCE_FN_NAME, None) is not None
-            else None
-        )
+
+        if PREFERENCE_FN_NAME in controlled_methods:
+            self.preference = Preference(
+                controlled_methods[PREFERENCE_FN_NAME],
+                cls.simple_sort,
+                cls.reverse_sort,
+                is_comparator=False,
+                is_debug=cls.debug_mode,
+            )
+        elif PREFERENCE_CMP_FN_NAME in controlled_methods:
+            self.preference = Preference(
+                controlled_methods[PREFERENCE_CMP_FN_NAME],
+                cls.simple_sort,
+                cls.reverse_sort,
+                is_comparator=True,
+                is_debug=cls.debug_mode,
+            )
+        else:
+            self.preference = None
 
         self.validate_class_attributes()
         self.validate_class_methods()
         self.assign_call_method(self.generate_call_method())
 
     def validate_class_attributes(self):
-        self.controller.sort_with_key = bool(self.controller.sort_with_key)
-        if self.controller.sort_with_key:
+        self.controller.simple_sort = bool(self.controller.simple_sort)
+        if self.controller.simple_sort:
             if self.has_preference:
                 raise ValueError(
-                    'Cannot use "sort_with_key" and define a "preference" at the same time.'
+                    'Cannot use "simple_sort" and define a "preference" or "preference_cmp" at the same time.'
                 )
 
-        self.controller.sort_reverse = bool(self.controller.sort_reverse)
-        if self.controller.sort_reverse:
-            if not self.has_preference and not self.controller.sort_with_key:
+        self.controller.reverse_sort = bool(self.controller.reverse_sort)
+        if self.controller.reverse_sort:
+            if not self.has_preference and not self.controller.simple_sort:
                 raise ValueError(
-                    'Cannot use "sort_reverse" without a "preference" or "sort_with_key" defined.'
+                    'Cannot use "reverse_sort" without a "preference" or "simple_sort" defined.'
                 )
         if (
             self.controller.fixed_max_chosen is not None
@@ -273,14 +295,14 @@ class ControllerManager:
             setup_statements.extend(_setup_stmt)
             max_chosen_element = None
 
-        elif self.controller.sort_with_key == True:
+        elif self.controller.simple_sort == True:
             ###
             # special case for defining preference without a preference function,
             # using the built in comparison dunder methods of the objects in
             # the partition.
             #
             keywords = []
-            if self.controller.sort_reverse == True:
+            if self.controller.reverse_sort == True:
                 keywords.append(ast.keyword(arg="reverse", value=ast.Constant(True)))
 
             # Create the function call node
