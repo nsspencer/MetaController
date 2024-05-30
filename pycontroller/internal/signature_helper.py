@@ -2,7 +2,7 @@ import ast
 import inspect
 import warnings
 from textwrap import dedent
-from typing import Callable
+from typing import Any, Callable, List, Tuple
 
 
 class SignatureHelper:
@@ -13,46 +13,89 @@ class SignatureHelper:
         else:
             self.spec = inspect.getfullargspec(fn)
             self.is_wrapped = False
-        self.has_explicit_return = SignatureHelper.fn_has_explicit_return(fn)
         self.is_staticmethod = isinstance(fn, staticmethod)
+        self.fn = fn
+        self._signature_dict = self.signature_to_dict(self.fn)
 
     @staticmethod
-    def fn_has_explicit_return(f) -> bool:
-        try:
-            source = dedent(inspect.getsource(f))
-            module = ast.parse(source)
-            function_def = module.body[0]  # Get the function definition from the module
-            has_return = any(isinstance(node, ast.Return) for node in function_def.body)
-        except BaseException:
-            warnings.warn(
-                f'Unable to determine if "{f.__name__}" has an explicit return. Assuming it does.'
-            )
-            has_return = True  # assume it returns
-        return has_return
+    def signature_to_dict(fn: Callable) -> dict:
+        """
+        returns a dict with the following keys:
+        'posonlyargs', 'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults', 'annotations'
+
+        NOTE: if "posonlyargs" exists, they will also be found in "args".
+
+        Args:
+            fn (Callable): callable object
+
+        Returns:
+            dict: dictionary with the components of the call signature
+        """
+        result = {}
+        result["posonlyargs"] = [
+            name
+            for name, param in inspect.signature(fn).parameters.items()
+            if param.kind == inspect.Parameter.POSITIONAL_ONLY
+        ]
+        result.update(inspect.getfullargspec(fn)._asdict())
+        return result
 
     @property
-    def positional_args(self) -> list:
-        if self.spec[0] is None:
-            return []
-        if len(self.keyword_arguments) != 0:
-            return self.spec.args[: -len(self.keyword_arguments)]
-        return self.spec.args
+    def posonlyargs(self) -> list:
+        return self._signature_dict["posonlyargs"]
 
     @property
-    def keyword_arguments(self) -> list:
-        if self.spec[3] is None:
-            return []
-        names = self.spec.args[len(self.spec.args[: -len(self.spec[3])]) :]
-        kwargs = list(zip(names, self.spec[3]))
-        return kwargs
+    def args(self) -> list:
+        return self._signature_dict["args"]
 
     @property
-    def has_positional_args(self) -> bool:
-        return len(self.positional_args) != 0
+    def varargs(self) -> list:
+        return self._signature_dict["varargs"]
 
     @property
-    def has_keyword_args(self) -> bool:
-        return len(self.keyword_arguments) != 0
+    def varkw(self) -> list:
+        return self._signature_dict["varkw"]
+
+    @property
+    def defaults(self) -> list:
+        return self._signature_dict["defaults"] or list()
+
+    @property
+    def kwonlyargs(self) -> list:
+        return self._signature_dict["kwonlyargs"]
+
+    @property
+    def kwonlydefaults(self) -> list:
+        return self._signature_dict["kwonlydefaults"] or list()
+
+    @property
+    def annotations(self) -> list:
+        return self._signature_dict["annotations"] or list()
+
+    def get_defaulted_args(self) -> List[Tuple[str, Any]]:
+        """
+        Returns a list of tuples of (str,Any) being the argument name and its default.
+
+        Returns:
+            List[Tuple[str, Any]]: defaulted argument names and values
+        """
+        keywords = self.args[len(self.args) - len(self.defaults) :]
+        if len(keywords) == 0:
+            return list()
+
+        return list(zip(keywords, self.defaults))
+
+    def get_keyword_only_args(self) -> List[Tuple[str, Any]]:
+        """
+        Returns a list of tuples of (str,Any) being the keyword and its value.
+
+        Returns:
+            List[Tuple]: keyword only argument names and values
+        """
+        if len(self.kwonlyargs) == 0:
+            return list()
+
+        return list(self.kwonlydefaults.items())
 
     @property
     def has_arg_unpack(self):
@@ -61,18 +104,6 @@ class SignatureHelper:
     @property
     def has_kwarg_unpack(self):
         return self.spec[2] is not None
-
-    @property
-    def all_args(self) -> list:
-        if self.spec.args is None:
-            return []
-        return self.spec.args
-
-    @property
-    def non_class_positional_args(self) -> list:
-        if self.is_staticmethod:
-            return self.positional_args
-        return self.positional_args[1:]
 
     @property
     def full_call_arg_spec(self) -> inspect.FullArgSpec:

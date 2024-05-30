@@ -101,6 +101,8 @@ class ActionArgumentImplementationTests(unittest.TestCase):
         a = T()
         e = a(elements, 1, 1, keyword_arg1=1, keyword_argument2=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 4))
+        e = a(elements, 2, 2, keyword_arg1=2, keyword_argument2=2)
+        self.assertTrue(sum(e) == original_sum + (len(elements) * 8))
 
 
 class FilterArgumentImplementationTests(unittest.TestCase):
@@ -456,6 +458,44 @@ class ArgsAndKwargsTests(unittest.TestCase):
         t_inst = T()
         t_inst([1])
         self.assertTrue(inst.val == 2)
+
+    def test_mangled_keywords_by_reference_side_effects_star_kwargs(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        inst = CustomClass(1)
+
+        class T(C):
+            def action(self, chosen: Any, kwarg1: CustomClass = inst, **kwargs) -> Any:
+                kwarg1.val = 2
+                kwargs["star_kwarg"].val = 2
+
+        t_inst = T()
+        star_kwarg = CustomClass(1)
+        t_inst([1], star_kwarg=star_kwarg)
+        self.assertTrue(inst.val == 2)
+        self.assertTrue(star_kwarg.val == 2)
+
+    def test_mangled_keywords_by_reference_side_effects_star_args_and_kwargs(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        inst = CustomClass(1)
+
+        class T(C):
+            def action(
+                self, chosen: Any, *args, kwarg1: CustomClass = inst, **kwargs
+            ) -> Any:
+                kwarg1.val = 2
+                kwargs["star_kwarg"].val = 2
+
+        t_inst = T()
+        star_kwarg = CustomClass(1)
+        t_inst([1], star_kwarg=star_kwarg)
+        self.assertTrue(inst.val == 2)
+        self.assertTrue(star_kwarg.val == 2)
 
 
 if __name__ == "__main__":

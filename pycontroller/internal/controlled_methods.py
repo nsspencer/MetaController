@@ -38,11 +38,11 @@ class ControlledMethod(ABC):
     def generate_wrapped_function(
         self, wrapper_name: str
     ) -> Tuple[ast.Call, ast.FunctionDef]:
+        fn_body = ast.parse(textwrap.dedent(inspect.getsource(self.fn))).body[0].body
+
         required_pos_args = self.signature.full_call_arg_spec.args[
             : self.get_min_required_call_args()
         ]
-
-        fn_body = ast.parse(textwrap.dedent(inspect.getsource(self.fn))).body[0].body
         inner_args = ast.arguments(
             posonlyargs=[],
             args=[ast.arg(arg=arg, annotation=None) for arg in required_pos_args],
@@ -52,6 +52,14 @@ class ControlledMethod(ABC):
             kwarg=[],
             defaults=[],
         )
+        inner_wrapper = ast.FunctionDef(
+            name="inner_fn",
+            args=inner_args,
+            body=fn_body,
+            decorator_list=[],
+            returns=None,
+            lineno=0,
+        )
 
         return_val = ast.Return(value=ast.Name(id="inner_fn", ctx=ast.Load()))
         args = self.fullargspec_to_arguments(self.signature.full_call_arg_spec)
@@ -59,6 +67,14 @@ class ControlledMethod(ABC):
             self.get_min_required_call_args() : -len(args.defaults) or None
         ]
         args.defaults = []
+        wrapper_fn = ast.FunctionDef(
+            name=wrapper_name,
+            args=args,
+            body=[inner_wrapper, return_val],
+            decorator_list=[],
+            returns=None,
+            lineno=self.get_new_lineno(),
+        )
 
         call_args = generate_positional_args(len(args.args))
         call_keywords = []
@@ -73,70 +89,13 @@ class ControlledMethod(ABC):
                 ast.keyword(arg=None, value=ast.Name(id=KWARG_NAME, ctx=ast.Load()))
             )
 
-        # generate the call function
+        # generate the call fn
         call_fn = ast.Call(
             func=ast.Name(wrapper_name, ctx=ast.Load()),
             args=call_args,
             keywords=call_keywords,
         )
 
-        if self.is_debug:
-            # generate a lambda expression to call instead of wrapping the users code.
-            # this allows the users code to be stepped into in a debugger.
-            # NOTE: wrapping the users code in lambdas makes it slower, which is
-            # not preferred, which is why i call it debug mode and force explicit
-            # declaration in the class attributes.
-
-            # first get the keyword args we need to pass to this function
-            specific_call_keywords = self.fullargspec_to_arguments(
-                self.signature.full_call_arg_spec
-            )
-            num_defaults = len(specific_call_keywords.defaults)
-            num_pos_args = len(specific_call_keywords.args) - num_defaults
-            assigned_default_kwargs = []
-            for index, default in enumerate(specific_call_keywords.defaults):
-                matching_keyword = specific_call_keywords.args[num_pos_args + index].arg
-                assigned_default_kwargs.append(
-                    ast.keyword(
-                        arg=matching_keyword,
-                        value=ast.Name(id=matching_keyword, ctx=ast.Load()),
-                    )
-                )
-            call_func = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                    attr=self.fn.__name__,
-                    ctx=ast.Load(),
-                ),
-                args=inner_args.args + call_args,
-                keywords=assigned_default_kwargs + call_keywords,
-            )
-            inner_lambda = ast.Lambda(args=inner_args, body=call_func)
-            inner_wrapper = ast.Assign(
-                targets=[ast.Name(id="inner_fn", ctx=ast.Store())],
-                value=inner_lambda,
-                lineno=0,
-            )
-
-        else:  # not debug mode
-            inner_wrapper = ast.FunctionDef(
-                name="inner_fn",
-                args=inner_args,
-                body=fn_body,
-                decorator_list=[],
-                returns=None,
-                lineno=0,
-            )
-
-        # generate the wrapper function
-        wrapper_fn = ast.FunctionDef(
-            name=wrapper_name,
-            args=args,
-            body=[inner_wrapper, return_val],
-            decorator_list=[],
-            returns=None,
-            lineno=self.get_new_lineno(),
-        )
         return call_fn, wrapper_fn
 
     @staticmethod

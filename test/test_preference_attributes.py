@@ -8,8 +8,8 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from pycontroller import Comparable
 from pycontroller import Controller as C
+from pycontroller import Sortable
 
 
 class Data:
@@ -148,7 +148,7 @@ class TestPreferenceKey(unittest.TestCase):
         with self.assertRaises(AttributeError):
 
             class T(C):
-                def preference(self) -> Comparable:
+                def preference(self) -> Sortable:
                     return None
 
     def test_invalid_preference_args_static(self):
@@ -156,12 +156,12 @@ class TestPreferenceKey(unittest.TestCase):
 
             class T(C):
                 @staticmethod
-                def preference() -> Comparable:
+                def preference() -> Sortable:
                     return None
 
     def test_preference_with_args(self):
         class T(C):
-            def preference(self, chosen: Data, arg1: int) -> Comparable:
+            def preference(self, chosen: Data, arg1: int) -> Sortable:
                 return chosen.value + arg1
 
         inst = T()
@@ -170,9 +170,7 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_preference_with_kwargs(self):
         class T(C):
-            def preference(
-                self, chosen: Data, arg0: int, kwarg0: int = 1
-            ) -> Comparable:
+            def preference(self, chosen: Data, arg0: int, kwarg0: int = 1) -> Sortable:
                 return chosen.value + arg0 + kwarg0
 
         inst = T()
@@ -185,7 +183,7 @@ class TestPreferenceKey(unittest.TestCase):
         class T(C):
             reverse_sort = True
 
-            def preference(self, chosen: Data, arg1: int) -> Comparable:
+            def preference(self, chosen: Data, arg1: int) -> Sortable:
                 return chosen.value + arg1
 
         inst = T()
@@ -196,9 +194,7 @@ class TestPreferenceKey(unittest.TestCase):
         class T(C):
             reverse_sort = True
 
-            def preference(
-                self, chosen: Data, arg0: int, kwarg0: int = 1
-            ) -> Comparable:
+            def preference(self, chosen: Data, arg0: int, kwarg0: int = 1) -> Sortable:
                 return chosen.value + arg0 + kwarg0
 
         inst = T()

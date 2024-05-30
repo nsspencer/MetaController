@@ -3,9 +3,14 @@ from functools import cmp_to_key
 from heapq import nlargest as _heapq_nlargest
 from heapq import nsmallest as _heapq_nsmallest
 from itertools import islice as _itertools_islice
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
-from pycontroller.internal.controlled_methods import Action, Filter, Preference
+from pycontroller.internal.controlled_methods import (
+    Action,
+    ControlledMethod,
+    Filter,
+    Preference,
+)
 from pycontroller.internal.namespace import *
 from pycontroller.internal.utils import generate_positional_args
 
@@ -119,59 +124,91 @@ class ControllerManager:
                 )
 
     def get_call_signature_args(self) -> ast.arguments:
-        # signature variables
+        """
+        The goal of this function is to determine the set of parameters that make up the call method
+        of this controller. This is done by inspecting the paramters of the controlled methods
+        that are a part of this controller.
+
+        Position only and non-defaulted keyword arguments are converted to placeholder argument
+        values, like: arg0, arg1, arg2, etc..
+
+        Keyword only and default arguments are allowed to shared the same name, but they must also
+        share the same default argument. Duplicated keywords with different default values
+        are invalid, and an error will be thrown.
+
+        Variable args are supported, and will be transformed to a placeholder name like: *args
+
+        Kwargs are supported, and will be transformed to a placeholder name like: **kwargs
+
+        Raises:
+            AttributeError: for duplicate keyword/default IDs without the same default value.
+
+        Returns:
+            ast.arguments: Arguments for the generated call method.
+        """
+        # arguments to be used when constructing the resulting ast.arguments
         posonlyargs = []
         args = []
         kwonlyargs = []
         kw_defaults = []
         defaults = []
+        var_arg = None
+        kwarg = None
 
-        # Create ast.arg objects for the function arguments
-        class_arg = ast.arg(arg=CLASS_ARG_NAME, annotation=None, type_comment=None)
-        partition_arg = ast.arg(arg=PARTITION_NAME, annotation=None, type_comment=None)
-        args.append(class_arg)
+        # add the class argument
+        posonlyargs.append(
+            ast.arg(arg=CLASS_ARG_NAME, annotation=None, type_comment=None)
+        )
+
+        # add the dynamic_max_chosen K argument
         if self.controller.dynamic_max_chosen:
-            args.append(
+            posonlyargs.append(
                 ast.arg(arg=MAX_CHOSEN_ARG_NAME, annotation=None, type_comment=None)
             )
-        args.append(partition_arg)
 
-        # generate positional args
-        pos_args_to_generate = 0
+        # add the partition argument
+        posonlyargs.append(
+            ast.arg(arg=PARTITION_NAME, annotation=None, type_comment=None)
+        )
+
+        # determine how many position only placeholders to generate
+        pos_only_placeholder_count = 0
         if self.has_action:
-            arg_difference = (
-                len(self.action.signature.non_class_positional_args)
-                - self.action.get_min_required_call_args()
+            num_args = len(self.action.signature.args) - len(
+                self.action.signature.defaults
             )
-            pos_args_to_generate = max(
-                arg_difference,
-                pos_args_to_generate,
-            )
-        if self.has_preference:
-            arg_difference = (
-                len(self.preference.signature.non_class_positional_args)
-                - self.preference.get_min_required_call_args()
-            )
-            pos_args_to_generate = max(
-                arg_difference,
-                pos_args_to_generate,
-            )
+            if not self.action.signature.is_staticmethod:
+                num_args -= 1  # remove one for the class argument
+            num_args -= self.action.get_min_required_call_args()
+            pos_only_placeholder_count = max(num_args, pos_only_placeholder_count)
+
         if self.has_filter:
-            arg_difference = (
-                len(self.filter.signature.non_class_positional_args)
-                - self.filter.get_min_required_call_args()
+            num_args = len(self.filter.signature.args) - len(
+                self.filter.signature.defaults
             )
-            pos_args_to_generate = max(
-                arg_difference,
-                pos_args_to_generate,
+            if not self.filter.signature.is_staticmethod:
+                num_args -= 1  # remove one for the class argument
+            num_args -= self.filter.get_min_required_call_args()
+            pos_only_placeholder_count = max(num_args, pos_only_placeholder_count)
+
+        if self.has_preference:
+            num_args = len(self.preference.signature.args) - len(
+                self.preference.signature.defaults
             )
-        args.extend(generate_positional_args(pos_args_to_generate))
+            if not self.preference.signature.is_staticmethod:
+                num_args -= 1  # remove one for the class argument
+            num_args -= self.preference.get_min_required_call_args()
+            pos_only_placeholder_count = max(num_args, pos_only_placeholder_count)
+
+        # generate the position only args that take the place of the args from the
+        # controlled methods
+        posonlyargs.extend(generate_positional_args(pos_only_placeholder_count))
 
         # defined as an inner function to pass args and saved_global_kwargs into the namespace
         def _should_include_arg(
             keyword: str,
             default: Any,
-            args: List[ast.arg] = args,
+            existing_args: List[str],
             saved_global_kwargs: Dict[str, Any] = self.saved_global_kwargs,
         ) -> bool:
             """
@@ -184,7 +221,7 @@ class ControllerManager:
             Args:
                 keyword (str): keyword argument in question
                 default (Any): default value for the keyword in question
-                args (List[ast.arg], optional): arguments that have already been added. Defaults to args.
+                existing_args (List[str]): arguments that have already been added.
                 saved_global_kwargs (Dict[str, Any], optional): saved defaults. Defaults to self.saved_global_kwargs.
 
             Raises:
@@ -193,8 +230,7 @@ class ControllerManager:
             Returns:
                 bool: Should include in args list
             """
-            _args = [arg.arg for arg in args]
-            if keyword in _args:
+            if keyword in existing_args:
                 _ctrl_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
                 if _ctrl_keyword_name in saved_global_kwargs:
                     val = saved_global_kwargs[_ctrl_keyword_name]
@@ -202,35 +238,50 @@ class ControllerManager:
                     return False
                 else:
                     raise AttributeError(
-                        f'Duplicate keyword argument "{keyword}" with different default values. Shared keyword arguments must have the same default value. Equality is checked with the __eq__ operator.'
+                        f'Duplicate keyword argument "{keyword}" with different default values.\
+                            Shared keyword arguments must have the same default value.\
+                                Equality is checked with the __eq__ operator.'
                     )
             return True
 
-        # get the keyword arguments
-        if self.has_action:
-            for keyword, default in self.action.signature.keyword_arguments:
-                if _should_include_arg(keyword, default):
+        def add_non_conflicting_parameters(
+            keyword_values: List[Tuple[str, Any]], args: list, defaults: list
+        ) -> None:
+            for keyword, value in keyword_values:
+                if _should_include_arg(keyword, value, args):
                     args.append(ast.arg(arg=keyword, annotation=None))
                     global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
-                    self.saved_global_kwargs[global_keyword_name] = default
-                    defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
-        if self.has_filter:
-            for keyword, default in self.filter.signature.keyword_arguments:
-                if _should_include_arg(keyword, default):
-                    args.append(ast.arg(arg=keyword, annotation=None))
-                    global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
-                    self.saved_global_kwargs[global_keyword_name] = default
-                    defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
-        if self.has_preference:
-            for keyword, default in self.preference.signature.keyword_arguments:
-                if _should_include_arg(keyword, default):
-                    args.append(ast.arg(arg=keyword, annotation=None))
-                    global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
-                    self.saved_global_kwargs[global_keyword_name] = default
+                    self.saved_global_kwargs[global_keyword_name] = value
                     defaults.append(ast.Name(id=global_keyword_name, ctx=ast.Load()))
 
+        # get the defaulted arguments
+        if self.has_action:
+            add_non_conflicting_parameters(
+                self.action.signature.get_defaulted_args(), args, defaults
+            )
+            add_non_conflicting_parameters(
+                self.action.signature.get_keyword_only_args(), kwonlyargs, kw_defaults
+            )
+
+        if self.has_filter:
+            add_non_conflicting_parameters(
+                self.filter.signature.get_defaulted_args(), args, defaults
+            )
+            add_non_conflicting_parameters(
+                self.filter.signature.get_keyword_only_args(), kwonlyargs, kw_defaults
+            )
+
+        if self.has_preference:
+            add_non_conflicting_parameters(
+                self.preference.signature.get_defaulted_args(), args, defaults
+            )
+            add_non_conflicting_parameters(
+                self.preference.signature.get_keyword_only_args(),
+                kwonlyargs,
+                kw_defaults,
+            )
+
         # check for arg unpacks
-        var_arg = None
         has_var_arg = False
         if self.has_action:
             has_var_arg = self.action.signature.has_arg_unpack or has_var_arg
@@ -242,7 +293,6 @@ class ControllerManager:
             var_arg = ast.arg(arg=VAR_ARG_NAME, annotation=None)
 
         # check for kwarg unpacks
-        kwarg = None
         has_kwarg = False
         if self.has_action:
             has_kwarg = self.action.signature.has_kwarg_unpack or has_kwarg
