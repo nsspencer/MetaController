@@ -5,12 +5,7 @@ from heapq import nsmallest as _heapq_nsmallest
 from itertools import islice as _itertools_islice
 from typing import Any, Callable, Dict, List, Tuple
 
-from pycontroller.internal.controlled_methods import (
-    Action,
-    ControlledMethod,
-    Filter,
-    Preference,
-)
+from pycontroller.internal.controlled_methods import Action, Filter, Preference
 from pycontroller.internal.namespace import *
 from pycontroller.internal.utils import generate_positional_args
 

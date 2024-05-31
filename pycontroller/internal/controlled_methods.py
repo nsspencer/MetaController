@@ -1,11 +1,11 @@
 import ast
 import inspect
-import sys
 import textwrap
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Tuple, Union
 
 from pycontroller.internal.namespace import *
+from pycontroller.internal.namespace import MANGLED_KWARG_NAME
 from pycontroller.internal.signature_helper import SignatureHelper
 from pycontroller.internal.utils import generate_positional_args
 
@@ -62,29 +62,82 @@ class ControlledMethod(ABC):
         )
 
         return_val = ast.Return(value=ast.Name(id="inner_fn", ctx=ast.Load()))
-        args = self.fullargspec_to_arguments(self.signature.full_call_arg_spec)
-        args.args = args.args[
-            self.get_min_required_call_args() : -len(args.defaults) or None
+        args = [
+            ast.arg(arg=arg, annotation=None)
+            for arg in self.signature.full_call_arg_spec.args[
+                self.get_min_required_call_args() :
+            ]
         ]
-        args.defaults = []
+        defaults = [
+            ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load())
+            for keyword, _ in self.signature.get_defaulted_args()
+        ]
+        vararg = (
+            ast.arg(arg=self.signature.varargs, annotation=None)
+            if self.signature.has_arg_unpack
+            else None
+        )
+        keywordonlyargs = [
+            ast.arg(arg=arg, annotation=None) for arg in self.signature.kwonlyargs
+        ]
+        keywordonlydefaults = [
+            ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load())
+            for keyword, _ in self.signature.get_keyword_only_args()
+        ]
+        kwarg = (
+            ast.arg(arg=self.signature.varkw, annotation=None)
+            if self.signature.has_kwarg_unpack
+            else None
+        )
+
+        # Create the outer_args with the correct structure
+        outer_args = ast.arguments(
+            posonlyargs=[],
+            args=args,
+            vararg=vararg,
+            kwonlyargs=keywordonlyargs,
+            kw_defaults=keywordonlydefaults,
+            kwarg=kwarg,
+            defaults=defaults,
+        )
+
         wrapper_fn = ast.FunctionDef(
             name=wrapper_name,
-            args=args,
+            args=outer_args,
             body=[inner_wrapper, return_val],
             decorator_list=[],
             returns=None,
             lineno=self.get_new_lineno(),
         )
 
-        call_args = generate_positional_args(len(args.args))
-        call_keywords = []
-        if args.vararg:
+        call_args = []
+        call_args.extend(
+            generate_positional_args(len(args) - len(self.signature.defaults))
+        )
+        call_args.extend(
+            [
+                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
+                for keyword, _ in self.signature.get_defaulted_args()
+            ]
+        )
+        if self.signature.has_arg_unpack:
             call_args.append(
                 ast.Starred(
                     value=ast.Name(id=VAR_ARG_NAME, ctx=ast.Load()), ctx=ast.Load()
                 )
             )
-        if args.kwarg:
+
+        call_keywords = []
+        call_keywords.extend(
+            [
+                ast.keyword(
+                    arg=keyword,
+                    value=ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load()),
+                )
+                for keyword, _ in self.signature.get_keyword_only_args()
+            ]
+        )
+        if self.signature.has_kwarg_unpack:
             call_keywords.append(
                 ast.keyword(arg=None, value=ast.Name(id=KWARG_NAME, ctx=ast.Load()))
             )
@@ -156,10 +209,11 @@ class Action(ControlledMethod):
     ) -> Tuple[ast.expr, List[ast.stmt]]:
         setup_statements = []
 
+        # determine if we need to wrap this function call because it needs additional arguments
+        full_arg_spec = self.signature.full_call_arg_spec
         if (
-            len(self.signature.full_call_arg_spec.args)
-            - self.get_min_required_call_args()
-            > 0
+            len(full_arg_spec.args) - self.get_min_required_call_args() > 0
+            or len(self.signature.kwonlyargs) != 0
             or self.signature.has_arg_unpack
             or self.signature.has_kwarg_unpack
         ):
@@ -202,10 +256,11 @@ class Filter(ControlledMethod):
     ) -> Tuple[ast.expr, List[ast.stmt]]:
         setup_statements = []
 
+        # determine if we need to wrap this function call because it needs additional arguments
+        full_arg_spec = self.signature.full_call_arg_spec
         if (
-            len(self.signature.full_call_arg_spec.args)
-            - self.get_min_required_call_args()
-            > 0
+            len(full_arg_spec.args) - self.get_min_required_call_args() > 0
+            or len(self.signature.kwonlyargs) != 0
             or self.signature.has_arg_unpack
             or self.signature.has_kwarg_unpack
         ):
@@ -257,10 +312,11 @@ class Preference(ControlledMethod):
     ) -> Tuple[ast.expr, List[ast.stmt]]:
         setup_statements = []
 
+        # determine if we need to wrap this function call because it needs additional arguments
+        full_arg_spec = self.signature.full_call_arg_spec
         if (
-            len(self.signature.full_call_arg_spec.args)
-            - self.get_min_required_call_args()
-            > 0
+            len(full_arg_spec.args) - self.get_min_required_call_args() > 0
+            or len(self.signature.kwonlyargs) != 0
             or self.signature.has_arg_unpack
             or self.signature.has_kwarg_unpack
         ):

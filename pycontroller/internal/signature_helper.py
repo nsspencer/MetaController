@@ -42,19 +42,25 @@ class SignatureHelper:
 
     @property
     def posonlyargs(self) -> list:
+        """
+        Only the position only arguments in the args list.
+        """
         return self._signature_dict["posonlyargs"]
 
     @property
     def args(self) -> list:
-        return self._signature_dict["args"]
+        """
+        Args are made up of position only and keyword arguments.
+        """
+        return self._signature_dict["args"] or list()
 
     @property
-    def varargs(self) -> list:
-        return self._signature_dict["varargs"]
+    def varargs(self) -> str:
+        return self._signature_dict["varargs"] or None
 
     @property
-    def varkw(self) -> list:
-        return self._signature_dict["varkw"]
+    def varkw(self) -> str:
+        return self._signature_dict["varkw"] or None
 
     @property
     def defaults(self) -> list:
@@ -62,7 +68,7 @@ class SignatureHelper:
 
     @property
     def kwonlyargs(self) -> list:
-        return self._signature_dict["kwonlyargs"]
+        return self._signature_dict["kwonlyargs"] or list()
 
     @property
     def kwonlydefaults(self) -> list:
@@ -99,11 +105,11 @@ class SignatureHelper:
 
     @property
     def has_arg_unpack(self):
-        return self.spec[1] is not None
+        return self.varargs is not None
 
     @property
     def has_kwarg_unpack(self):
-        return self.spec[2] is not None
+        return self.varkw is not None
 
     @property
     def full_call_arg_spec(self) -> inspect.FullArgSpec:

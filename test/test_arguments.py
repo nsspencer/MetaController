@@ -87,7 +87,7 @@ class ActionArgumentImplementationTests(unittest.TestCase):
     def test_positional_keyword_arg_and_kwarg_unpack_arg(self):
         class T(C):
             def action(
-                self, chosen: Any, pos_arg0, *args, keyword_arg1=1, **kwargs
+                self, chosen: Any, pos_arg0, kwarg_0=0, *args, keyword_arg1=1, **kwargs
             ) -> Any:
                 return (
                     chosen
@@ -99,9 +99,9 @@ class ActionArgumentImplementationTests(unittest.TestCase):
 
         original_sum = sum(elements)
         a = T()
-        e = a(elements, 1, 1, keyword_arg1=1, keyword_argument2=1)
+        e = a(elements, 1, 1, 1, keyword_arg1=1, keyword_argument2=1)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 4))
-        e = a(elements, 2, 2, keyword_arg1=2, keyword_argument2=2)
+        e = a(elements, 2, 2, 2, keyword_arg1=2, keyword_argument2=2)
         self.assertTrue(sum(e) == original_sum + (len(elements) * 8))
 
 
