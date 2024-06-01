@@ -62,28 +62,19 @@ class ControlledMethod(ABC):
         )
 
         return_val = ast.Return(value=ast.Name(id="inner_fn", ctx=ast.Load()))
-        args = [
-            ast.arg(arg=arg, annotation=None)
-            for arg in self.signature.full_call_arg_spec.args[
-                self.get_min_required_call_args() :
-            ]
+        _extra_call_args = self.signature.full_call_arg_spec.args[
+            self.get_min_required_call_args() :
         ]
-        defaults = [
-            ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load())
-            for keyword, _ in self.signature.get_defaulted_args()
+        _extra_call_args = _extra_call_args[
+            : len(_extra_call_args) - len(self.signature.defaults)
         ]
+
+        args = [ast.arg(arg=arg, annotation=None) for arg in _extra_call_args]
         vararg = (
             ast.arg(arg=self.signature.varargs, annotation=None)
             if self.signature.has_arg_unpack
             else None
         )
-        keywordonlyargs = [
-            ast.arg(arg=arg, annotation=None) for arg in self.signature.kwonlyargs
-        ]
-        keywordonlydefaults = [
-            ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load())
-            for keyword, _ in self.signature.get_keyword_only_args()
-        ]
         kwarg = (
             ast.arg(arg=self.signature.varkw, annotation=None)
             if self.signature.has_kwarg_unpack
@@ -95,10 +86,10 @@ class ControlledMethod(ABC):
             posonlyargs=[],
             args=args,
             vararg=vararg,
-            kwonlyargs=keywordonlyargs,
-            kw_defaults=keywordonlydefaults,
+            kwonlyargs=[],
+            kw_defaults=[],
             kwarg=kwarg,
-            defaults=defaults,
+            defaults=[],
         )
 
         wrapper_fn = ast.FunctionDef(
@@ -111,15 +102,7 @@ class ControlledMethod(ABC):
         )
 
         call_args = []
-        call_args.extend(
-            generate_positional_args(len(args) - len(self.signature.defaults))
-        )
-        call_args.extend(
-            [
-                ast.keyword(arg=keyword, value=ast.Name(id=keyword, ctx=ast.Load()))
-                for keyword, _ in self.signature.get_defaulted_args()
-            ]
-        )
+        call_args.extend(generate_positional_args(len(args)))
         if self.signature.has_arg_unpack:
             call_args.append(
                 ast.Starred(
@@ -128,15 +111,6 @@ class ControlledMethod(ABC):
             )
 
         call_keywords = []
-        call_keywords.extend(
-            [
-                ast.keyword(
-                    arg=keyword,
-                    value=ast.Name(id=f"{MANGLED_KWARG_NAME}{keyword}", ctx=ast.Load()),
-                )
-                for keyword, _ in self.signature.get_keyword_only_args()
-            ]
-        )
         if self.signature.has_kwarg_unpack:
             call_keywords.append(
                 ast.keyword(arg=None, value=ast.Name(id=KWARG_NAME, ctx=ast.Load()))
@@ -237,10 +211,6 @@ class Action(ControlledMethod):
             args=[call_fn, get_elements_expr],
             keywords=[],
         )
-
-        # list_call = ast.Call(
-        #     func=ast.Name(id="list", ctx=ast.Load()), args=[call], keywords=[]
-        # )
 
         return call, setup_statements
 

@@ -243,7 +243,7 @@ class ControllerManager:
             keyword_values: List[Tuple[str, Any]], args: list, defaults: list
         ) -> None:
             for keyword, value in keyword_values:
-                if _should_include_arg(keyword, value, args):
+                if _should_include_arg(keyword, value, [arg.arg for arg in args]):
                     args.append(ast.arg(arg=keyword, annotation=None))
                     global_keyword_name = f"{MANGLED_KWARG_NAME}{keyword}"
                     self.saved_global_kwargs[global_keyword_name] = value

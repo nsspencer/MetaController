@@ -7,15 +7,17 @@ from typing import Any, Callable, List, Tuple
 
 class SignatureHelper:
     def __init__(self, fn: Callable) -> None:
+        self.is_staticmethod = isinstance(fn, staticmethod)
+        self.fn = fn
+
         if hasattr(fn, "__wrapped__"):
             self.spec = inspect.getfullargspec(fn.__wrapped__)
+            self._signature_dict = self.signature_to_dict(fn.__wrapped__)
             self.is_wrapped = True
         else:
             self.spec = inspect.getfullargspec(fn)
+            self._signature_dict = self.signature_to_dict(fn)
             self.is_wrapped = False
-        self.is_staticmethod = isinstance(fn, staticmethod)
-        self.fn = fn
-        self._signature_dict = self.signature_to_dict(self.fn)
 
     @staticmethod
     def signature_to_dict(fn: Callable) -> dict:
