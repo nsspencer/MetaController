@@ -16,7 +16,7 @@ class Controller(metaclass=__MetaController):
     reverse_sort: bool = False
     fixed_max_chosen: int = None
     dynamic_max_chosen: bool = False
-    debug_mode: bool = True
+    optimize: bool = False
 
     def action(self, chosen, /, *args, **kwargs) -> Any: ...
     def sort_cmp(self, a, b, /, *args, **kwargs) -> int: ...

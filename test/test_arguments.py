@@ -295,7 +295,7 @@ class PreferenceArgumentImplementationTests(unittest.TestCase):
                 pos_arg: int,
                 *args,
                 keyword_arg1: int = 1,
-                **kwargs
+                **kwargs,
             ) -> int:
                 if pos_arg == keyword_arg1 == args[0] == kwargs["keyword_arg"]:
                     return -1 if a < b else 1 if a > b else 0
@@ -487,6 +487,31 @@ class ArgsAndKwargsTests(unittest.TestCase):
         class T(C):
             def action(
                 self, chosen: Any, *args, kwarg1: CustomClass = inst, **kwargs
+            ) -> Any:
+                kwarg1.val = 2
+                kwargs["star_kwarg"].val = 2
+
+        t_inst = T()
+        star_kwarg = CustomClass(1)
+        t_inst([1], star_kwarg=star_kwarg)
+        self.assertTrue(inst.val == 2)
+        self.assertTrue(star_kwarg.val == 2)
+
+    def test_mangled_keywords_by_reference_side_effects_star_args_and_kwargs2(self):
+        class CustomClass:
+            def __init__(self, val: int) -> None:
+                self.val = val
+
+        inst = CustomClass(1)
+
+        class T(C):
+            def action(
+                self,
+                chosen: Any,
+                defaulted_arg0=1,
+                *args,
+                kwarg1: CustomClass = inst,
+                **kwargs,
             ) -> Any:
                 kwarg1.val = 2
                 kwargs["star_kwarg"].val = 2

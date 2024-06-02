@@ -28,13 +28,13 @@ class ControllerManager:
         }
 
         self.action = (
-            Action(controlled_methods[ACTION_FN_NAME], is_debug=cls.debug_mode)
+            Action(controlled_methods[ACTION_FN_NAME], optimize=cls.optimize)
             if controlled_methods.get(ACTION_FN_NAME, None) is not None
             else None
         )
 
         self.filter = (
-            Filter(controlled_methods[FILTER_FN_NAME], is_debug=cls.debug_mode)
+            Filter(controlled_methods[FILTER_FN_NAME], optimize=cls.optimize)
             if controlled_methods.get(FILTER_FN_NAME, None) is not None
             else None
         )
@@ -55,7 +55,7 @@ class ControllerManager:
                 cls.simple_sort,
                 cls.reverse_sort,
                 is_comparator=False,
-                is_debug=cls.debug_mode,
+                optimize=cls.optimize,
             )
         elif SORT_CMP_FN_NAME in controlled_methods:
             self.sort_key = Preference(
@@ -63,7 +63,7 @@ class ControllerManager:
                 cls.simple_sort,
                 cls.reverse_sort,
                 is_comparator=True,
-                is_debug=cls.debug_mode,
+                optimize=cls.optimize,
             )
         else:
             self.sort_key = None
