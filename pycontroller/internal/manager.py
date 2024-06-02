@@ -52,16 +52,16 @@ class ControllerManager:
         if SORT_KEY_FN_NAME in controlled_methods:
             self.sort_key = Preference(
                 controlled_methods[SORT_KEY_FN_NAME],
-                cls.simple_sort,
-                cls.reverse_sort,
+                cls.sort,
+                cls.sort_reverse,
                 is_comparator=False,
                 optimize=cls.optimize,
             )
         elif SORT_CMP_FN_NAME in controlled_methods:
             self.sort_key = Preference(
                 controlled_methods[SORT_CMP_FN_NAME],
-                cls.simple_sort,
-                cls.reverse_sort,
+                cls.sort,
+                cls.sort_reverse,
                 is_comparator=True,
                 optimize=cls.optimize,
             )
@@ -73,18 +73,18 @@ class ControllerManager:
         self.assign_call_method(self.generate_call_method())
 
     def validate_class_attributes(self):
-        self.controller.simple_sort = bool(self.controller.simple_sort)
-        if self.controller.simple_sort:
+        self.controller.sort = bool(self.controller.sort)
+        if self.controller.sort:
             if self.has_preference:
                 raise ValueError(
-                    'Cannot use "simple_sort" and define a "sort_key" or "sort_cmp" at the same time.'
+                    'Cannot use "sort" and define a "sort_key" or "sort_cmp" at the same time.'
                 )
 
-        self.controller.reverse_sort = bool(self.controller.reverse_sort)
-        if self.controller.reverse_sort:
-            if not self.has_preference and not self.controller.simple_sort:
+        self.controller.sort_reverse = bool(self.controller.sort_reverse)
+        if self.controller.sort_reverse:
+            if not self.has_preference and not self.controller.sort:
                 raise ValueError(
-                    'Cannot use "reverse_sort" without a "sort_key" or "simple_sort" defined.'
+                    'Cannot use "sort_reverse" without a "sort_key" or "sort" defined.'
                 )
         if (
             self.controller.fixed_max_chosen is not None
@@ -340,14 +340,14 @@ class ControllerManager:
             setup_statements.extend(_setup_stmt)
             max_chosen_element = None
 
-        elif self.controller.simple_sort == True:
+        elif self.controller.sort == True:
             ###
             # special case for defining sort_key without a sort_key function,
             # using the built in comparison dunder methods of the objects in
             # the partition.
             #
             keywords = []
-            if self.controller.reverse_sort == True:
+            if self.controller.sort_reverse == True:
                 keywords.append(ast.keyword(arg="reverse", value=ast.Constant(True)))
 
             # Create the function call node

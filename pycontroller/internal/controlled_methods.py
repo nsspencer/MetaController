@@ -335,14 +335,14 @@ class Preference(ControlledMethod):
     def __init__(
         self,
         fn: Callable[..., Any],
-        simple_sort: bool,
-        reverse_sort: bool,
+        sort: bool,
+        sort_reverse: bool,
         is_comparator: bool = False,
         optimize: bool = False,
     ) -> None:
         super().__init__(fn, optimize)
-        self.reverse_sort = reverse_sort
-        self.simple_sort = simple_sort
+        self.sort_reverse = sort_reverse
+        self.sort = sort
         self.is_comparator = is_comparator
 
     def generate_expression(
@@ -384,7 +384,7 @@ class Preference(ControlledMethod):
 
         # Create the nodes for the function names and the arguments
         if max_chosen is not None:
-            if self.reverse_sort:
+            if self.sort_reverse:
                 sort_fn_name = ast.Name(id="_heapq_nlargest", ctx=ast.Load())
             else:
                 sort_fn_name = ast.Name(id="_heapq_nsmallest", ctx=ast.Load())
@@ -393,14 +393,14 @@ class Preference(ControlledMethod):
         else:
             sort_fn_name = ast.Name(id="sorted", ctx=ast.Load())
             sort_args += [get_elements_expr]
-            if self.reverse_sort:
+            if self.sort_reverse:
                 sort_kwargs.append(
                     ast.keyword(
                         arg="reverse", value=ast.Constant(value=True, kind=bool)
                     )
                 )
 
-        if not self.simple_sort:
+        if not self.sort:
             if self.is_comparator:
                 cmp_to_key_name = ast.Name(id="_cmp_to_key", ctx=ast.Load())
                 sort_kwargs.append(

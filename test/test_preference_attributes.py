@@ -9,7 +9,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from pycontroller import Controller as C
-from pycontroller import Sortable
+from pycontroller import SortableType
 
 
 class Data:
@@ -44,14 +44,14 @@ class TestPreferenceAttributes(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             class T(C):
-                simple_sort = True
+                sort = True
 
                 def sort_cmp(self, a: Any, b: Any, *args, **kwargs) -> int:
                     return super().sort_key(a, b, *args, **kwargs)
 
     def test_simple_sort(self):
         class T(C):
-            simple_sort = True
+            sort = True
 
             def action(self, chosen: int) -> Any:
                 return chosen
@@ -64,15 +64,15 @@ class TestPreferenceAttributes(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             class T(C):
-                reverse_sort = True
+                sort_reverse = True
 
                 def action(self, chosen: Any, *args, **kwargs) -> Any:
                     return chosen
 
     def test_simple_sort_reverse(self):
         class T(C):
-            simple_sort = True
-            reverse_sort = True
+            sort = True
+            sort_reverse = True
 
             def action(self, chosen: int) -> Any:
                 return chosen
@@ -83,7 +83,7 @@ class TestPreferenceAttributes(unittest.TestCase):
 
     def test_preference_reverse(self):
         class T(C):
-            reverse_sort = True
+            sort_reverse = True
 
             def action(self, chosen: int) -> Any:
                 return chosen
@@ -99,8 +99,8 @@ class TestPreferenceAttributes(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             class T(C):
-                reverse_sort = True
-                simple_sort = True
+                sort_reverse = True
+                sort = True
 
                 def action(self, chosen: int) -> Any:
                     return chosen
@@ -112,7 +112,7 @@ class TestPreferenceAttributes(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             class T(C):
-                reverse_sort = True
+                sort_reverse = True
 
 
 class TestPreferenceKey(unittest.TestCase):
@@ -127,7 +127,7 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_simple_key_reverse(self):
         class T(C):
-            reverse_sort = True
+            sort_reverse = True
 
             def sort_key(self, chosen: Data):
                 return chosen.value
@@ -138,7 +138,7 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_invalid_builtin_key_sort(self):
         class T(C):
-            simple_sort = True
+            sort = True
 
         inst = T()
         with self.assertRaises(TypeError):
@@ -148,7 +148,7 @@ class TestPreferenceKey(unittest.TestCase):
         with self.assertRaises(AttributeError):
 
             class T(C):
-                def sort_key(self) -> Sortable:
+                def sort_key(self) -> SortableType:
                     return None
 
     def test_invalid_preference_args_static(self):
@@ -156,12 +156,12 @@ class TestPreferenceKey(unittest.TestCase):
 
             class T(C):
                 @staticmethod
-                def sort_key() -> Sortable:
+                def sort_key() -> SortableType:
                     return None
 
     def test_preference_with_args(self):
         class T(C):
-            def sort_key(self, chosen: Data, arg1: int) -> Sortable:
+            def sort_key(self, chosen: Data, arg1: int) -> SortableType:
                 return chosen.value + arg1
 
         inst = T()
@@ -170,7 +170,9 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_preference_with_kwargs(self):
         class T(C):
-            def sort_key(self, chosen: Data, arg0: int, kwarg0: int = 1) -> Sortable:
+            def sort_key(
+                self, chosen: Data, arg0: int, kwarg0: int = 1
+            ) -> SortableType:
                 return chosen.value + arg0 + kwarg0
 
         inst = T()
@@ -181,9 +183,9 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_preference_with_args_reverse(self):
         class T(C):
-            reverse_sort = True
+            sort_reverse = True
 
-            def sort_key(self, chosen: Data, arg1: int) -> Sortable:
+            def sort_key(self, chosen: Data, arg1: int) -> SortableType:
                 return chosen.value + arg1
 
         inst = T()
@@ -192,9 +194,11 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_preference_with_kwargs_reverse(self):
         class T(C):
-            reverse_sort = True
+            sort_reverse = True
 
-            def sort_key(self, chosen: Data, arg0: int, kwarg0: int = 1) -> Sortable:
+            def sort_key(
+                self, chosen: Data, arg0: int, kwarg0: int = 1
+            ) -> SortableType:
                 return chosen.value + arg0 + kwarg0
 
         inst = T()
