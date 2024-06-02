@@ -38,7 +38,7 @@ class TestDoK(unittest.TestCase):
         class T(C):
             fixed_max_chosen = 1
 
-            def preference_cmp(self, a: Any, b: Any) -> int:
+            def sort_cmp(self, a: Any, b: Any) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()
@@ -75,7 +75,7 @@ class TestDoK(unittest.TestCase):
         class T(C):
             dynamic_max_chosen = True
 
-            def preference_cmp(self, a: Any, b: Any) -> int:
+            def sort_cmp(self, a: Any, b: Any) -> int:
                 return -1 if a < b else 1 if a > b else 0
 
         inst = T()

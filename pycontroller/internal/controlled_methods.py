@@ -299,12 +299,12 @@ class Preference(ControlledMethod):
             if self.is_comparator:
                 wrapper_call_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                    attr=PREFERENCE_CMP_FN_NAME,
+                    attr=SORT_CMP_FN_NAME,
                 )
             else:
                 wrapper_call_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                    attr=PREFERENCE_FN_NAME,
+                    attr=SORT_KEY_FN_NAME,
                 )
 
         # define the args for the sort method

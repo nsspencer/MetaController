@@ -25,14 +25,14 @@ class InvalidTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
 
             class T(C):
-                def preference_cmp(self, a):
+                def sort_cmp(self, a):
                     return None
 
     def test_invalid_preference_args_2(self):
         with self.assertRaises(AttributeError):
 
             class T(C):
-                def preference_cmp(self):
+                def sort_cmp(self):
                     return None
 
     def test_invalid_filter_args(self):

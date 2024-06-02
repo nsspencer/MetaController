@@ -39,34 +39,34 @@ class ControllerManager:
             else None
         )
 
-        # make sure there is only one preference (preference or preference_cmp) defined
+        # make sure there is only one sort order (sort_key or sort_cmp) defined
         if (
-            PREFERENCE_CMP_FN_NAME in controlled_methods
-            and PREFERENCE_FN_NAME in controlled_methods
+            SORT_CMP_FN_NAME in controlled_methods
+            and SORT_KEY_FN_NAME in controlled_methods
         ):
             raise AttributeError(
-                'Cannot define both a "preference" and "preference_cmp" in the same controller. \
-                    "preference" is usually more performant than "preference_cmp"'
+                'Cannot define both a "sort_key" and "sort_cmp" in the same controller. \
+                    "sort_key" is usually more performant than "sort_cmp"'
             )
 
-        if PREFERENCE_FN_NAME in controlled_methods:
-            self.preference = Preference(
-                controlled_methods[PREFERENCE_FN_NAME],
+        if SORT_KEY_FN_NAME in controlled_methods:
+            self.sort_key = Preference(
+                controlled_methods[SORT_KEY_FN_NAME],
                 cls.simple_sort,
                 cls.reverse_sort,
                 is_comparator=False,
                 is_debug=cls.debug_mode,
             )
-        elif PREFERENCE_CMP_FN_NAME in controlled_methods:
-            self.preference = Preference(
-                controlled_methods[PREFERENCE_CMP_FN_NAME],
+        elif SORT_CMP_FN_NAME in controlled_methods:
+            self.sort_key = Preference(
+                controlled_methods[SORT_CMP_FN_NAME],
                 cls.simple_sort,
                 cls.reverse_sort,
                 is_comparator=True,
                 is_debug=cls.debug_mode,
             )
         else:
-            self.preference = None
+            self.sort_key = None
 
         self.validate_class_attributes()
         self.validate_class_methods()
@@ -77,14 +77,14 @@ class ControllerManager:
         if self.controller.simple_sort:
             if self.has_preference:
                 raise ValueError(
-                    'Cannot use "simple_sort" and define a "preference" or "preference_cmp" at the same time.'
+                    'Cannot use "simple_sort" and define a "sort_key" or "sort_cmp" at the same time.'
                 )
 
         self.controller.reverse_sort = bool(self.controller.reverse_sort)
         if self.controller.reverse_sort:
             if not self.has_preference and not self.controller.simple_sort:
                 raise ValueError(
-                    'Cannot use "reverse_sort" without a "preference" or "simple_sort" defined.'
+                    'Cannot use "reverse_sort" without a "sort_key" or "simple_sort" defined.'
                 )
         if (
             self.controller.fixed_max_chosen is not None
@@ -111,11 +111,11 @@ class ControllerManager:
                 )
 
         if self.has_preference:
-            if self.preference.get_min_required_call_args() > len(
-                self.preference.signature.full_call_arg_spec.args
+            if self.sort_key.get_min_required_call_args() > len(
+                self.sort_key.signature.full_call_arg_spec.args
             ):
                 raise AttributeError(
-                    f"Preference signature requires at least {self.preference.get_min_required_call_args()} positional parameter(s)."
+                    f"Preference signature requires at least {self.sort_key.get_min_required_call_args()} positional parameter(s)."
                 )
 
     def get_call_signature_args(self) -> ast.arguments:
@@ -187,12 +187,12 @@ class ControllerManager:
             pos_only_placeholder_count = max(num_args, pos_only_placeholder_count)
 
         if self.has_preference:
-            num_args = len(self.preference.signature.args) - len(
-                self.preference.signature.defaults
+            num_args = len(self.sort_key.signature.args) - len(
+                self.sort_key.signature.defaults
             )
-            if not self.preference.signature.is_staticmethod:
+            if not self.sort_key.signature.is_staticmethod:
                 num_args -= 1  # remove one for the class argument
-            num_args -= self.preference.get_min_required_call_args()
+            num_args -= self.sort_key.get_min_required_call_args()
             pos_only_placeholder_count = max(num_args, pos_only_placeholder_count)
 
         # generate the position only args that take the place of the args from the
@@ -268,10 +268,10 @@ class ControllerManager:
 
         if self.has_preference:
             add_non_conflicting_parameters(
-                self.preference.signature.get_defaulted_args(), args, defaults
+                self.sort_key.signature.get_defaulted_args(), args, defaults
             )
             add_non_conflicting_parameters(
-                self.preference.signature.get_keyword_only_args(),
+                self.sort_key.signature.get_keyword_only_args(),
                 kwonlyargs,
                 kw_defaults,
             )
@@ -283,7 +283,7 @@ class ControllerManager:
         if self.has_filter:
             has_var_arg = self.filter.signature.has_arg_unpack or has_var_arg
         if self.has_preference:
-            has_var_arg = self.preference.signature.has_arg_unpack or has_var_arg
+            has_var_arg = self.sort_key.signature.has_arg_unpack or has_var_arg
         if has_var_arg:
             var_arg = ast.arg(arg=VAR_ARG_NAME, annotation=None)
 
@@ -294,7 +294,7 @@ class ControllerManager:
         if self.has_filter:
             has_kwarg = self.filter.signature.has_kwarg_unpack or has_kwarg
         if self.has_preference:
-            has_kwarg = self.preference.signature.has_kwarg_unpack or has_kwarg
+            has_kwarg = self.sort_key.signature.has_kwarg_unpack or has_kwarg
         if has_kwarg:
             kwarg = ast.arg(arg=KWARG_NAME, annotation=None)
 
@@ -334,7 +334,7 @@ class ControllerManager:
             _max_chosen = None
 
         if self.has_preference:
-            get_elements, _setup_stmt = self.preference.generate_expression(
+            get_elements, _setup_stmt = self.sort_key.generate_expression(
                 get_elements, max_chosen_element
             )
             setup_statements.extend(_setup_stmt)
@@ -342,7 +342,7 @@ class ControllerManager:
 
         elif self.controller.simple_sort == True:
             ###
-            # special case for defining preference without a preference function,
+            # special case for defining sort_key without a sort_key function,
             # using the built in comparison dunder methods of the objects in
             # the partition.
             #
@@ -426,4 +426,4 @@ class ControllerManager:
 
     @property
     def has_preference(self) -> bool:
-        return self.preference is not None
+        return self.sort_key is not None
