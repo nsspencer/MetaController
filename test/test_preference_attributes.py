@@ -9,7 +9,6 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from pycontroller import Controller as C
-from pycontroller import SortableType
 
 
 class Data:
@@ -148,7 +147,7 @@ class TestPreferenceKey(unittest.TestCase):
         with self.assertRaises(AttributeError):
 
             class T(C):
-                def sort_key(self) -> SortableType:
+                def sort_key(self):
                     return None
 
     def test_invalid_preference_args_static(self):
@@ -156,12 +155,12 @@ class TestPreferenceKey(unittest.TestCase):
 
             class T(C):
                 @staticmethod
-                def sort_key() -> SortableType:
+                def sort_key():
                     return None
 
     def test_preference_with_args(self):
         class T(C):
-            def sort_key(self, chosen: Data, arg1: int) -> SortableType:
+            def sort_key(self, chosen: Data, arg1: int):
                 return chosen.value + arg1
 
         inst = T()
@@ -170,9 +169,7 @@ class TestPreferenceKey(unittest.TestCase):
 
     def test_preference_with_kwargs(self):
         class T(C):
-            def sort_key(
-                self, chosen: Data, arg0: int, kwarg0: int = 1
-            ) -> SortableType:
+            def sort_key(self, chosen: Data, arg0: int, kwarg0: int = 1):
                 return chosen.value + arg0 + kwarg0
 
         inst = T()
@@ -185,7 +182,7 @@ class TestPreferenceKey(unittest.TestCase):
         class T(C):
             sort_reverse = True
 
-            def sort_key(self, chosen: Data, arg1: int) -> SortableType:
+            def sort_key(self, chosen: Data, arg1: int):
                 return chosen.value + arg1
 
         inst = T()
@@ -196,9 +193,7 @@ class TestPreferenceKey(unittest.TestCase):
         class T(C):
             sort_reverse = True
 
-            def sort_key(
-                self, chosen: Data, arg0: int, kwarg0: int = 1
-            ) -> SortableType:
+            def sort_key(self, chosen: Data, arg0: int, kwarg0: int = 1):
                 return chosen.value + arg0 + kwarg0
 
         inst = T()
