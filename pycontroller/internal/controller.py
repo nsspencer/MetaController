@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Protocol, TypeAlias, TypeVar
+from typing import Any, Iterable, List, Protocol, TypeAlias, TypeVar, overload
 
 from .metaclass import MetaController as __MetaController
 
@@ -30,14 +30,10 @@ class Controller(metaclass=__MetaController):
     def sort_key(self, chosen, /, *args, **kwargs) -> SupportsRichComparison: ...
     def filter(self, chosen, /, *args, **kwargs) -> bool: ...
 
-    if dynamic_max_chosen is True:
+    @overload
+    def __call__(self, partition: Iterable[Any], /, *args, **kwargs) -> List[Any]: ...
 
-        def __call__(
-            self, max_chosen: int, partition: Iterable[Any], /, *args, **kwargs
-        ) -> List[Any]: ...
-
-    else:
-
-        def __call__(
-            self, partition: Iterable[Any], /, *args, **kwargs
-        ) -> List[Any]: ...
+    @overload
+    def __call__(
+        self, max_chosen: int, partition: Iterable[Any], /, *args, **kwargs
+    ) -> List[Any]: ...

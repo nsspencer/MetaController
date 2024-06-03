@@ -392,7 +392,14 @@ class ControllerManager:
             col_offset=0,
         )
 
+        #######
+        # TODO: This is unnecessary. Just make a module from the ast representation, and
+        # compile that. That is more robust as well since this is only supported in
+        # python >= 3.9
+        #
         self.generated_call_fn = ast.unparse(call_fn)
+        #
+        #######
 
         _globals = self.previous_frame.f_globals
         _globals.update(self.previous_frame.f_locals)
