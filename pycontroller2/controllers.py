@@ -1,3 +1,4 @@
+import inspect
 from typing import (
     Any,
     Generic,
@@ -8,6 +9,11 @@ from typing import (
     Union,
     _ProtocolMeta,
 )
+
+from .implementation.do import DoImplementation
+from .implementation.do_all import DoAllImplementation
+from .implementation.do_k import DoKImplementation
+from .implementation.do_one import DoOneImplementation
 
 TChosen = TypeVar("TChosen")
 TActionReturn = TypeVar("TActionReturn")
@@ -32,19 +38,25 @@ class MetaController(_ProtocolMeta):
         if name in ["Do", "DoOne", "DoK", "DoAll"]:
             return
 
-        _base_cls = bases[0]
-        if _base_cls is Do:
-            pass
-        elif _base_cls is DoOne:
-            pass
-        elif _base_cls is DoK:
-            pass
-        elif _base_cls is DoAll:
-            pass
-        else:
-            raise NotImplementedError("Unkown base class.")
+        _base_classes = [base for base in bases if base in [Do, DoOne, DoK, DoAll]]
+        if len(_base_classes) > 1:
+            raise TypeError("Controller multiple inheritance is not allowed.")
+        _base_class = _base_classes[0]
 
-        pass
+        if _base_class is Do:
+            implementation = DoImplementation
+        elif _base_class is DoOne:
+            implementation = DoOneImplementation
+        elif _base_class is DoK:
+            implementation = DoKImplementation
+        elif _base_class is DoAll:
+            implementation = DoAllImplementation
+        else:
+            raise NotImplementedError("Unkown base class.")  # should not get here
+
+        cls.__call__ = implementation(
+            cls, name, bases, attrs, inspect.currentframe().f_back
+        ).generate_call_method()
 
 
 class Do(Generic[TActionReturn], metaclass=MetaController):
@@ -100,7 +112,7 @@ class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
     #
 
     def __call__(
-        self, partition: Iterable[TChosen], *args: Any, **kwargs: Any
+        self, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
     ) -> TActionReturn: ...
 
     def update_to(
@@ -137,10 +149,6 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 
     def action(self, chosen: TChosen, *args: Any, **kwargs: Any) -> TActionReturn: ...
 
-    def continue_while(
-        self, action_result: TActionReturn, *args: Any, **kwargs: Any
-    ) -> bool: ...
-
     def post_controller(self, *args: Any, **kwargs: Any) -> None: ...
 
     def fold(
@@ -152,7 +160,7 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
     #
 
     def __call__(
-        self, k: int, partition: Iterable[TChosen], *args: Any, **kwargs: Any
+        self, k: int, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
     ) -> Iterable[TActionReturn] | TFoldReturn: ...
 
     def update_to(self, cls: "DoK[TChosen, TActionReturn, TFoldReturn]") -> None: ...
@@ -183,10 +191,6 @@ class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaControll
 
     def action(self, chosen: TChosen, *args: Any, **kwargs: Any) -> TActionReturn: ...
 
-    def continue_while(
-        self, action_result: TActionReturn, *args: Any, **kwargs: Any
-    ) -> bool: ...
-
     def post_controller(self, *args: Any, **kwargs: Any) -> None: ...
 
     def fold(
@@ -198,7 +202,7 @@ class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaControll
     #
 
     def __call__(
-        self, partition: Iterable[TChosen], *args: Any, **kwargs: Any
+        self, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
     ) -> Iterable[TActionReturn] | TFoldReturn: ...
 
     def update_to(
