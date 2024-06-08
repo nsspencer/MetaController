@@ -2,8 +2,8 @@ import ast
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
-from pycontroller2.exceptions import InvalidControllerMethod
-from pycontroller2.namespace import (
+from pycontroller2.internal.exceptions import InvalidControllerMethod
+from pycontroller2.internal.namespace import (
     ACTION_METHOD_NAME,
     FILTER_METHOD_NAME,
     FOLD_METHOD_NAME,
@@ -40,10 +40,26 @@ class BaseControllerImplementation(ABC):
             self.attrs.get(POST_CONTROLLER_METHOD_NAME, None) is not None
         )
 
-        self.validate()
+    @abstractmethod
+    def validate(self) -> None:
+        """
+        Validation method to ensure that class attributes and method signatures/return values
+        are all valid before any compilation is done. This method should raise specific
+        exceptions if a controller is deemed invalid.
+        """
+        ...
 
     @abstractmethod
-    def generate_call_method(self) -> Callable[..., Any]: ...
+    def generate_call_method(self) -> Callable[..., Any]:
+        """
+        Delegate to each controller implementation to create its own call method.
+        This must return a callable method that will be bound to the classes __call__
+        dunder method. Each instance will be callable with the output of this method.
+
+        Returns:
+            Callable[..., Any]: __call__() method for the controller instances.
+        """
+        ...
 
     ####
     # Read only properties
@@ -104,15 +120,3 @@ class BaseControllerImplementation(ABC):
             _locals,
         )
         return _locals[GENERATED_CALL_METHOD_NAME]
-
-    def validate(self) -> None:
-        """
-        A pre-validation check of the class attributes, methods, and arguments for the controller.
-        This is intended to be a top level check, and more checks are recommended for the derived
-        classes.
-        """
-
-        if self.has_preference_key and self.has_preference_cmp:
-            raise InvalidControllerMethod(
-                f'Cannot define both "{PREFERENCE_KEY_METHOD_NAME}" and "{PREFERENCE_CMP_METHOD_NAME}" at the same time. You must choose one or the other.'
-            )
