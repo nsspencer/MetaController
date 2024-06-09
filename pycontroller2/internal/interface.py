@@ -63,7 +63,6 @@ class MetaController(_ProtocolMeta):
 
 class Do(Generic[TActionReturn], metaclass=MetaController):
     optimize: bool = True
-    enable_updates: bool = False
 
     ###
     # Valid User Defined Methods:
@@ -96,7 +95,6 @@ class Do(Generic[TActionReturn], metaclass=MetaController):
 
 class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
     optimize: bool = True
-    enable_updates: bool = False
     reverse_preference: bool = False
 
     ###
@@ -148,7 +146,6 @@ class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
 
 class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = True
-    enable_updates: bool = False
     reverse_preference: bool = False
     num_threads: None | int = None
     num_processes: None | int = None
@@ -202,7 +199,6 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 
 class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = True
-    enable_updates: bool = False
     reverse_preference: bool = False
     num_threads: None | int = None
     num_processes: None | int = None

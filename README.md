@@ -1,7 +1,20 @@
 # PyController
 
-## Code Generation Design choices:
+## Claims:
 
+1) The right structure is important for modeling solutions to problems
+2) Tightly coupled code is hard to read, reason about, update, and maintain
+3) Python is a highly dynamic programming language, which should make it pair well to solving highly dynamic problems
+
+
+## Solutions this library provides:
+
+2) Decoupled code is better than coupled code
+3) Declarative programming is better than imparative programming
+4) Most code has a dynamic lifetime (many changes); updates & maintenance can be a big time sink
+
+
+## Code Generation Design choices:
 
 ### Arguments:
 
