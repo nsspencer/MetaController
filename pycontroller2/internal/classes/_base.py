@@ -24,21 +24,16 @@ class BaseControllerImplementation(ABC):
         self.attrs = attrs
         self.stack_frame = stack_frame
 
-        self.__has_pre_controller = (
-            self.attrs.get(PRE_CONTROLLER_METHOD_NAME, None) is not None
-        )
-        self.__has_filter = self.attrs.get(FILTER_METHOD_NAME, None) is not None
-        self.__has_preference_key = (
-            self.attrs.get(PREFERENCE_KEY_METHOD_NAME, None) is not None
-        )
-        self.__has_preference_cmp = (
-            self.attrs.get(PREFERENCE_CMP_METHOD_NAME, None) is not None
-        )
-        self.__has_action = self.attrs.get(ACTION_METHOD_NAME, None) is not None
-        self.__has_fold = self.attrs.get(FOLD_METHOD_NAME, None) is not None
-        self.__has_post_controller = (
-            self.attrs.get(POST_CONTROLLER_METHOD_NAME, None) is not None
-        )
+        self.__has_pre_controller = self.get_pre_controller_attr() is not None
+        self.__has_filter = self.get_filter_attr() is not None
+        self.__has_preference_key = self.get_preference_key_attr() is not None
+        self.__has_preference_cmp = self.get_preference_cmp_attr() is not None
+        self.__has_action = self.get_action_attr() is not None
+        self.__has_fold = self.get_fold_attr() is not None
+        self.__has_post_controller = self.get_post_controller_attr() is not None
+
+    ####
+    # Methods to be defined by sub-classes
 
     @abstractmethod
     def validate(self) -> None:
@@ -120,3 +115,24 @@ class BaseControllerImplementation(ABC):
             _locals,
         )
         return _locals[GENERATED_CALL_METHOD_NAME]
+
+    def get_pre_controller_attr(self) -> Callable:
+        return self.attrs.get(PRE_CONTROLLER_METHOD_NAME, None)
+
+    def get_filter_attr(self) -> Callable:
+        return self.attrs.get(FILTER_METHOD_NAME, None)
+
+    def get_preference_key_attr(self) -> Callable:
+        return self.attrs.get(PREFERENCE_KEY_METHOD_NAME, None)
+
+    def get_preference_cmp_attr(self) -> Callable:
+        return self.attrs.get(PREFERENCE_CMP_METHOD_NAME, None)
+
+    def get_action_attr(self) -> Callable:
+        return self.attrs.get(ACTION_METHOD_NAME, None)
+
+    def get_fold_attr(self) -> Callable:
+        return self.attrs.get(FOLD_METHOD_NAME, None)
+
+    def get_post_controller_attr(self) -> Callable:
+        return self.attrs.get(POST_CONTROLLER_METHOD_NAME, None)

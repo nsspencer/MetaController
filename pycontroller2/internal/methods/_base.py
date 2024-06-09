@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 class BaseControlledMethod(ABC):
     @abstractmethod
-    def get_invoke_statement(self) -> ast.AST:
+    def get_invocation(self) -> ast.AST:
         """
         Generates the code required to use this controlled method.
 
