@@ -17,16 +17,17 @@ class MethodInspector:
             )
 
         self.fn = fn
-        self.is_staticmethod = isinstance(fn, staticmethod)
+        self.__is_staticmethod = isinstance(fn, staticmethod)
+        self.__is_lambda = inspect.isfunction(fn) and fn.__name__ == "<lambda>"
 
         if hasattr(fn, "__wrapped__"):
             self.spec = inspect.getfullargspec(fn.__wrapped__)
             self._signature_dict = self.signature_to_dict(fn.__wrapped__)
-            self.is_wrapped = True
+            self.__is_decorated = True
         else:
             self.spec = inspect.getfullargspec(fn)
             self._signature_dict = self.signature_to_dict(fn)
-            self.is_wrapped = False
+            self.__is_decorated = False
 
         # set the placeholder values for the return options
         self.__has_explicit_void_return = None
@@ -38,6 +39,18 @@ class MethodInspector:
     ###
     # Read Only Properties
     #
+
+    @property
+    def is_staticmethod(self) -> bool:
+        return self.__is_staticmethod
+
+    @property
+    def is_decorated(self) -> bool:
+        return self.__is_decorated
+
+    @property
+    def is_lambda(self) -> bool:
+        return self.__is_lambda
 
     @property
     def has_explicit_void_return(self) -> bool:
@@ -68,6 +81,93 @@ class MethodInspector:
         if self.__error is None:
             self._parse_return_options()
         return self.__error
+
+    @property
+    def posonlyargs(self) -> list:
+        """
+        Only the position only arguments in the args list.
+        """
+        return self._signature_dict["posonlyargs"]
+
+    @property
+    def args(self) -> list:
+        """
+        Args are made up of position only and keyword arguments.
+        """
+        return self._signature_dict["args"] or list()
+
+    @property
+    def varargs(self) -> str:
+        return self._signature_dict["varargs"] or None
+
+    @property
+    def varkw(self) -> str:
+        return self._signature_dict["varkw"] or None
+
+    @property
+    def defaults(self) -> list:
+        return self._signature_dict["defaults"] or list()
+
+    @property
+    def kwonlyargs(self) -> list:
+        return self._signature_dict["kwonlyargs"] or list()
+
+    @property
+    def kwonlydefaults(self) -> list:
+        return self._signature_dict["kwonlydefaults"] or list()
+
+    @property
+    def annotations(self) -> list:
+        return self._signature_dict["annotations"] or list()
+
+    @property
+    def has_arg_unpack(self):
+        return self.varargs is not None
+
+    @property
+    def has_kwarg_unpack(self):
+        return self.varkw is not None
+
+    @property
+    def full_call_arg_spec(self) -> inspect.FullArgSpec:
+        if self.__is_staticmethod:
+            return self.spec
+
+        # remove the self argument
+        return inspect.FullArgSpec(
+            args=self.spec.args[1:],
+            varargs=self.spec.varargs,
+            varkw=self.spec.varkw,
+            defaults=self.spec.defaults,
+            kwonlyargs=self.spec.kwonlyargs,
+            kwonlydefaults=self.spec.kwonlydefaults,
+            annotations=self.spec.annotations,
+        )
+
+    def get_defaulted_args(self) -> List[Tuple[str, Any]]:
+        """
+        Returns a list of tuples of (str,Any) being the argument name and its default.
+
+        Returns:
+            List[Tuple[str, Any]]: defaulted argument names and values
+        """
+        keywords = self.args[len(self.args) - len(self.defaults) :]
+        if len(keywords) == 0:
+            return list()
+
+        return list(zip(keywords, self.defaults))
+
+    def get_keyword_only_args(self) -> List[Tuple[str, Any]]:
+        """
+        Returns a list of tuples of (str,Any) being the keyword and its value.
+
+        Returns:
+            List[Tuple]: keyword only argument names and values
+        """
+        if len(self.kwonlyargs) == 0:
+            return list()
+
+        return list(self.kwonlydefaults.items())
 
     def _parse_return_options(self) -> None:
         """Inspection method to parse this instances' callable and determine the
@@ -170,6 +270,7 @@ class MethodInspector:
             self.__has_explicit_void_return = visitor.has_explicit_void_return
             self.__has_value_yield = visitor.has_value_yield
             self.__has_value_yield_from = visitor.has_value_yield_from
+            self.__error = False
 
         except BaseException as err:
             try:
@@ -202,93 +303,6 @@ class MethodInspector:
         result.update(inspect.getfullargspec(fn)._asdict())
         return result
 
-    @property
-    def posonlyargs(self) -> list:
-        """
-        Only the position only arguments in the args list.
-        """
-        return self._signature_dict["posonlyargs"]
-
-    @property
-    def args(self) -> list:
-        """
-        Args are made up of position only and keyword arguments.
-        """
-        return self._signature_dict["args"] or list()
-
-    @property
-    def varargs(self) -> str:
-        return self._signature_dict["varargs"] or None
-
-    @property
-    def varkw(self) -> str:
-        return self._signature_dict["varkw"] or None
-
-    @property
-    def defaults(self) -> list:
-        return self._signature_dict["defaults"] or list()
-
-    @property
-    def kwonlyargs(self) -> list:
-        return self._signature_dict["kwonlyargs"] or list()
-
-    @property
-    def kwonlydefaults(self) -> list:
-        return self._signature_dict["kwonlydefaults"] or list()
-
-    @property
-    def annotations(self) -> list:
-        return self._signature_dict["annotations"] or list()
-
-    def get_defaulted_args(self) -> List[Tuple[str, Any]]:
-        """
-        Returns a list of tuples of (str,Any) being the argument name and its default.
-
-        Returns:
-            List[Tuple[str, Any]]: defaulted argument names and values
-        """
-        keywords = self.args[len(self.args) - len(self.defaults) :]
-        if len(keywords) == 0:
-            return list()
-
-        return list(zip(keywords, self.defaults))
-
-    def get_keyword_only_args(self) -> List[Tuple[str, Any]]:
-        """
-        Returns a list of tuples of (str,Any) being the keyword and its value.
-
-        Returns:
-            List[Tuple]: keyword only argument names and values
-        """
-        if len(self.kwonlyargs) == 0:
-            return list()
-
-        return list(self.kwonlydefaults.items())
-
-    @property
-    def has_arg_unpack(self):
-        return self.varargs is not None
-
-    @property
-    def has_kwarg_unpack(self):
-        return self.varkw is not None
-
-    @property
-    def full_call_arg_spec(self) -> inspect.FullArgSpec:
-        if self.is_staticmethod:
-            return self.spec
-
-        # remove the self argument
-        return inspect.FullArgSpec(
-            args=self.spec.args[1:],
-            varargs=self.spec.varargs,
-            varkw=self.spec.varkw,
-            defaults=self.spec.defaults,
-            kwonlyargs=self.spec.kwonlyargs,
-            kwonlydefaults=self.spec.kwonlydefaults,
-            annotations=self.spec.annotations,
-        )
-
 
 if __name__ == "__main__":
 
@@ -299,6 +313,9 @@ if __name__ == "__main__":
 
         yield TestClass
 
+    import timeit
+
+    print(timeit.timeit(lambda: MethodInspector(test).has_parse_error, number=1000))
     result = MethodInspector(test)
     print(result.has_explicit_value_return)
     print(result.has_explicit_void_return)
