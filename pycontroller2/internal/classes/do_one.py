@@ -106,7 +106,7 @@ class DoOneImplementation(BaseControllerImplementation):
         if not self.has_preference_key and not self.has_preference_cmp:
             get_elements = ast.Call(
                 func=ast.Name(id="islice", ctx=ast.Load()),
-                args=[get_elements, 1],
+                args=[get_elements, ast.Constant(value=1, kind="int")],
                 keywords=[],
             )
             additional_globals["islice"] = islice

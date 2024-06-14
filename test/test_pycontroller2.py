@@ -112,7 +112,7 @@ class TestDoOne(unittest.TestCase):
                 self.post_controller_passed = True
 
         inst = BasicDoOne()
-        elements = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0]
         result = inst(elements)
         self.assertTrue(result == 0)
         self.assertTrue(inst.pre_controller_passed)
