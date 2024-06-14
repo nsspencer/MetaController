@@ -2,25 +2,31 @@
 
 ## Claims:
 
-1) The right structure is important for modeling solutions to problems
+1) The right structure is important for modeling problems
 2) Tightly coupled code is hard to read, reason about, update, and maintain
 3) Python is a highly dynamic programming language, which should make it pair well to solving highly dynamic problems
-
-
-## Solutions this library provides:
-
-2) Decoupled code is better than coupled code
-3) Declarative programming is better than imparative programming
-4) Most code has a dynamic lifetime (many changes); updates & maintenance can be a big time sink
+4) Decoupled code is better than coupled code
+5) Declarative programming is better than imparative programming
+6) Most code has a dynamic lifetime (many changes); updates & maintenance can be a big time sink
 
 
 ## Code Generation Design choices:
 
 ### Arguments:
 
-* All positional or non defaulted arguments must be named the same in each controlled method that uses them.
+* All position only or non defaulted arguments must be named the same in each controlled method that uses them.
 * You may use the same keyword argument among mulitple controlled methods as long as the default argument is equivalent (==)
+* All defaulted arguments are converted to keyword only arguments and cannot be set positionally in the call method of the controller. Keyword only arguments 
 * arg unpack and kwarg unpack must use the same name across all controlled methods
+
+Arguments are resolved in the following order:
+Pre controller
+filter
+preference_key
+preference_cmp
+action
+fold
+post_controller
 
 ### Controlled methods
 

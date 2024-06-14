@@ -35,6 +35,8 @@ class MethodInspector:
         self.__has_value_yield = None
         self.__has_value_yield_from = None
         self.__error = None
+        self.__decompiled_module = None
+        self.__source = None
 
     ###
     # Read Only Properties
@@ -83,6 +85,10 @@ class MethodInspector:
         return self.__error
 
     @property
+    def name(self) -> str:
+        return self.fn.__name__
+
+    @property
     def posonlyargs(self) -> list:
         """
         Only the position only arguments in the args list.
@@ -95,6 +101,19 @@ class MethodInspector:
         Args are made up of position only and keyword arguments.
         """
         return self._signature_dict["args"] or list()
+
+    @property
+    def call_args(self) -> list:
+        """
+        Call args are made up of arguments excluding the class arg if
+        this is an instance method.
+
+        Returns:
+            list: _description_
+        """
+        if self.is_staticmethod:
+            return self.args
+        return self.args[1:]
 
     @property
     def varargs(self) -> str:
@@ -144,6 +163,25 @@ class MethodInspector:
             annotations=self.spec.annotations,
         )
 
+    @property
+    def body_ast(self) -> List[ast.AST]:
+        """
+        Returns the body ast of the method. NOTE: This excludes the signature.
+
+        Returns:
+            List[ast.AST]: List of AST nodes representing the body of the method.
+        """
+        if self.has_parse_error:
+            return None
+        elif self.is_lambda:
+            raise NotImplementedError(
+                "Inspecting lambda functions is not supported yet."
+            )
+            # TODO: REPLACE THIS. I should handle lambdas entirely separetely, and boil them down to this class's properties
+            return [self.__decompiled_module.body[0].value.body]
+        # get the module body, then the body of the function
+        return self.__decompiled_module.body[0].body
+
     def get_defaulted_args(self) -> List[Tuple[str, Any]]:
         """
         Returns a list of tuples of (str,Any) being the argument name and its default.
@@ -169,6 +207,16 @@ class MethodInspector:
 
         return list(self.kwonlydefaults.items())
 
+    def get_non_defaulted_args(self) -> List[str]:
+        """
+        Returns a the list of arguments that are either position only, or non
+        defaulted.
+
+        Returns:
+            List[str]: Position only or non-defaulted arguments.
+        """
+        return self.args[: -len(self.get_defaulted_args()) or None]
+
     def _parse_return_options(self) -> None:
         """Inspection method to parse this instances' callable and determine the
         different ways it can exit:
@@ -190,8 +238,8 @@ class MethodInspector:
         self.__error = False
 
         try:
-            source = inspect.getsource(self.fn)
-            module = ast.parse(dedent(source))
+            self.__source = inspect.getsource(self.fn)
+            self.__decompiled_module = ast.parse(dedent(self.__source))
 
             class InnerReturnVisitor(ast.NodeVisitor):
                 def __init__(self):
@@ -264,7 +312,9 @@ class MethodInspector:
                     return next_sibling
 
             visitor = InnerReturnVisitor()
-            visitor.visit(module.body[0])  # Only visit the top-level function
+            visitor.visit(
+                self.__decompiled_module.body[0]
+            )  # Only visit the top-level function
 
             self.__has_explicit_value_return = visitor.has_explicit_value_return
             self.__has_explicit_void_return = visitor.has_explicit_void_return
@@ -308,14 +358,19 @@ if __name__ == "__main__":
 
     def test():
         class TestClass:
-            def test2():
+            def test2(self):
                 return 0
 
-        yield TestClass
+            __call__ = lambda: print("called")
 
-    import timeit
+        yield (lambda: TestClass)()
 
-    print(timeit.timeit(lambda: MethodInspector(test).has_parse_error, number=1000))
+    # import timeit
+    # print(timeit.timeit(lambda: MethodInspector(test).has_parse_error, number=1000))
+
+    lambda_test = lambda: print("test")
+    r = MethodInspector(lambda_test)
+    syntax = r.body_ast
     result = MethodInspector(test)
     print(result.has_explicit_value_return)
     print(result.has_explicit_void_return)

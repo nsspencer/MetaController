@@ -5,6 +5,7 @@ K_ARG_NAME = "k"
 CHOSEN_ARG_NAME = "chosen"
 PREFERENCE_ARG_A_NAME = "a"
 PREFERENCE_ARG_B_NAME = "b"
+CLASS_ARG_NAME = "self"
 
 
 ####
@@ -17,3 +18,8 @@ ACTION_METHOD_NAME = "action"
 FOLD_METHOD_NAME = "fold"
 POST_CONTROLLER_METHOD_NAME = "post_controller"
 GENERATED_CALL_METHOD_NAME = "call_fn"
+
+
+####
+# Variable Names
+ACTION_RESULT_ASSIGNMENT_NAME = "_ctrl_result_"

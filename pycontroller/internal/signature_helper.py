@@ -103,6 +103,16 @@ class SignatureHelper:
 
         return list(self.kwonlydefaults.items())
 
+    def get_non_defaulted_args(self) -> List[str]:
+        """
+        Returns a the list of arguments that are either position only, or non
+        defaulted.
+
+        Returns:
+            List[str]: Position only or non-defaulted arguments.
+        """
+        return self.args[: None or -len(self.get_defaulted_args())]
+
     @property
     def has_arg_unpack(self):
         return self.varargs is not None
