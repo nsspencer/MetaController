@@ -43,14 +43,12 @@ class DoImplementation(BaseControllerImplementation):
 
     def generate_call_method(self) -> Callable[..., Any]:
         body = []
-        lineno = 1
 
         if self.has_pre_controller:
             pre_controller_call = MethodInvocation(
                 self.pre_controller
             ).to_function_call()
             body.append(ast.Expr(value=pre_controller_call))
-            lineno += 1
 
         if self.has_action:
             result = ast.Assign(
@@ -58,14 +56,12 @@ class DoImplementation(BaseControllerImplementation):
                 value=MethodInvocation(self.action).to_function_call(),
             )
             body.append(result)
-            lineno += 1
 
         if self.has_post_controller:
             post_controller_call = MethodInvocation(
                 self.post_controller
             ).to_function_call()
             body.append(ast.Expr(value=post_controller_call))
-            lineno += 1
 
         if self.has_action:
             body.append(
@@ -73,7 +69,6 @@ class DoImplementation(BaseControllerImplementation):
                     value=ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load())
                 )
             )
-            lineno += 1
 
         args, saved_defaults = self.get_call_args(
             use_class_arg=True,
