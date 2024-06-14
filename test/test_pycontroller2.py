@@ -19,23 +19,23 @@ class TestDo(unittest.TestCase):
                 self.postcontroller_passed = False
                 self.action_passed = False
 
-            def pre_controller(self) -> None:
+            def pre_controller(self, *args) -> None:
                 self.precontroller_passed = True
 
-            def action(self) -> int:
+            def action(self, **kwargs) -> int:
                 global TEST_GLOBAL
                 nonlocal TEST_LOCAL
                 self.action_passed = True
                 TEST_LOCAL = True
                 TEST_GLOBAL = True
 
-            def post_controller(self) -> None:
+            def post_controller(self, *args) -> None:
                 self.postcontroller_passed = True
 
         inst = BaseDo()
 
         # call the controller
-        inst()
+        inst(1, 2, 3, 4, 5, 6, 7, test=1)
         self.assertTrue(inst.precontroller_passed)
         self.assertTrue(inst.postcontroller_passed)
         self.assertTrue(inst.action_passed)

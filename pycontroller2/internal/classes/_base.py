@@ -584,7 +584,7 @@ class BaseControllerImplementation(ABC):
         if self.has_filter:
             if kwarg_name is None:
                 kwarg_name = self.filter.varkw
-            elif self.filter.has_arg_unpack and self.filter.varkw != kwarg_name:
+            elif self.filter.has_kwarg_unpack and self.filter.varkw != kwarg_name:
                 raise ArgumentError(
                     dedent(
                         f'{FILTER_METHOD_NAME} controlled action uses "{self.filter.varkw}" as the keyword argument unpack variable name, \
@@ -596,7 +596,7 @@ class BaseControllerImplementation(ABC):
             if kwarg_name is None:
                 kwarg_name = self.preference_key.varkw
             elif (
-                self.preference_key.has_arg_unpack
+                self.preference_key.has_kwarg_unpack
                 and self.preference_key.varkw != kwarg_name
             ):
                 raise ArgumentError(
@@ -610,7 +610,7 @@ class BaseControllerImplementation(ABC):
             if kwarg_name is None:
                 kwarg_name = self.preference_cmp.varkw
             elif (
-                self.preference_cmp.has_arg_unpack
+                self.preference_cmp.has_kwarg_unpack
                 and self.preference_cmp.varkw != kwarg_name
             ):
                 raise ArgumentError(
@@ -623,7 +623,7 @@ class BaseControllerImplementation(ABC):
         if self.has_action:
             if kwarg_name is None:
                 kwarg_name = self.action.varkw
-            elif self.action.has_arg_unpack and self.action.varkw != kwarg_name:
+            elif self.action.has_kwarg_unpack and self.action.varkw != kwarg_name:
                 raise ArgumentError(
                     dedent(
                         f'{ACTION_METHOD_NAME} controlled action uses "{self.action.varkw}" as the keyword argument unpack variable name, \
@@ -634,7 +634,7 @@ class BaseControllerImplementation(ABC):
         if self.has_fold:
             if kwarg_name is None:
                 kwarg_name = self.fold.varkw
-            elif self.fold.has_arg_unpack and self.fold.varkw != kwarg_name:
+            elif self.fold.has_kwarg_unpack and self.fold.varkw != kwarg_name:
                 raise ArgumentError(
                     dedent(
                         f'{FOLD_METHOD_NAME} controlled action uses "{self.fold.varkw}" as the keyword argument unpack variable name, \
@@ -646,7 +646,7 @@ class BaseControllerImplementation(ABC):
             if kwarg_name is None:
                 kwarg_name = self.post_controller.varkw
             elif (
-                self.post_controller.has_arg_unpack
+                self.post_controller.has_kwarg_unpack
                 and self.post_controller.varkw != kwarg_name
             ):
                 raise ArgumentError(
