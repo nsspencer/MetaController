@@ -78,7 +78,7 @@ class Do(Generic[TActionReturn], metaclass=MetaController):
     # Built-in Instance Methods
     #
 
-    def __call__(self, *args: Any, **kwargs: Any) -> TActionReturn:
+    def __call__(self, *args: Any, **kwargs: Any) -> Union[TActionReturn, None]:
         """Generated call method for your controller. *args and **kwargs represent the
         position only, arguments, defaulted arguments, argument unpacks, keyword only,
         and keyword unpacks that you have defined (if any) across all your controlled
@@ -119,7 +119,7 @@ class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
 
     def __call__(
         self, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
-    ) -> TActionReturn:
+    ) -> Union[TActionReturn, None]:
         """Generated call method for your controller. *args and **kwargs represent the
         position only, arguments, defaulted arguments, argument unpacks, keyword only,
         and keyword unpacks that you have defined (if any) across all your controlled
@@ -174,7 +174,7 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 
     def __call__(
         self, k: int, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
-    ) -> Iterable[TActionReturn] | TFoldReturn:
+    ) -> Union[Iterable[TActionReturn], TFoldReturn, None]:
         """Generated call method for your controller. *args and **kwargs represent the
         position only, arguments, defaulted arguments, argument unpacks, keyword only,
         and keyword unpacks that you have defined (if any) across all your controlled
@@ -186,7 +186,7 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
             this controller will operate over.
 
         Returns:
-            Iterable[TActionReturn] | TFoldReturn: If action returns a value and there
+            Union[Iterable[TActionReturn], TFoldReturn, None]: If action returns a value and there
             is no fold(...) method defined, the result will be an Iterable of elements
             returned from k number of calls to the action(...). If fold(...) is defined,
             this will return the result from the fold(...) method. Else, this will return
@@ -227,7 +227,7 @@ class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaControll
 
     def __call__(
         self, partition: Iterable[TChosen], /, *args: Any, **kwargs: Any
-    ) -> Iterable[TActionReturn] | TFoldReturn:
+    ) -> Union[Iterable[TActionReturn], TFoldReturn, None]:
         """Generated call method for your controller. *args and **kwargs represent the
         position only, arguments, defaulted arguments, argument unpacks, keyword only,
         and keyword unpacks that you have defined (if any) across all your controlled
@@ -238,7 +238,7 @@ class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaControll
             this controller will operate over.
 
         Returns:
-            Iterable[TActionReturn] | TFoldReturn: If action returns a value and there
+            Union[Iterable[TActionReturn], TFoldReturn, None]: If action returns a value and there
             is no fold(...) method defined, the result will be an Iterable of elements
             returned from all the calls to the action(...) method. If fold(...) is defined,
             this will return the result from the fold(...) method. Else, this will return

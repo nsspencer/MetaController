@@ -1,4 +1,5 @@
 import ast
+from typing import List
 
 from pycontroller2.internal.method_inspector import MethodInspector
 from pycontroller2.internal.namespace import CLASS_ARG_NAME
@@ -48,3 +49,15 @@ class MethodInvocation:
             args=args,
             keywords=keywords,
         )
+
+    def to_lambda(self, lambda_args: List[str]) -> ast.Lambda:
+        args = ast.arguments(
+            posonlyargs=[],
+            args=[ast.arg(arg=arg, annotation=None) for arg in lambda_args],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=[],
+            kwarg=None,
+            defaults=[],
+        )
+        return ast.Lambda(args=args, body=self.to_function_call())

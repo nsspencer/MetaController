@@ -26,6 +26,7 @@ class DoImplementation(BaseControllerImplementation):
         )
 
     def validate(self) -> None:
+        super().validate()
         if self.has_filter:
             warnings.warn(
                 "Filter is not supported for Do controllers. It will be ignored."

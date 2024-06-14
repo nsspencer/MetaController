@@ -83,5 +83,44 @@ class TestDo(unittest.TestCase):
         self.assertTrue(inst(0) == 1)
 
 
+class TestDoOne(unittest.TestCase):
+    def test_basic(self):
+        class BasicDoOne(DoOne):
+            def __init__(self):
+                self.pre_controller_passed = False
+                self.filter_passed = False
+                self.preference_key_passed = False
+                self.action_passed = False
+                self.post_controller_passed = False
+
+            def pre_controller(self) -> None:
+                self.pre_controller_passed = True
+
+            def filter(self, chosen) -> bool:
+                self.filter_passed = True
+                return True
+
+            def preference_key(self, chosen):
+                self.preference_key_passed = True
+                return chosen
+
+            def action(self, chosen):
+                self.action_passed = True
+                return chosen
+
+            def post_controller(self) -> None:
+                self.post_controller_passed = True
+
+        inst = BasicDoOne()
+        elements = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        result = inst(elements)
+        self.assertTrue(result == 0)
+        self.assertTrue(inst.pre_controller_passed)
+        self.assertTrue(inst.filter_passed)
+        self.assertTrue(inst.preference_key_passed)
+        self.assertTrue(inst.action_passed)
+        self.assertTrue(inst.post_controller_passed)
+
+
 if __name__ == "__main__":
     unittest.main()
