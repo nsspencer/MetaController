@@ -1,5 +1,5 @@
 import ast
-from typing import List
+from typing import List, Tuple
 
 from pycontroller2.internal.method_inspector import MethodInspector
 from pycontroller2.internal.namespace import CLASS_ARG_NAME
@@ -9,15 +9,13 @@ class MethodInvocation:
     def __init__(self, method: MethodInspector) -> None:
         self.method = method
 
-    def to_function_call(self) -> ast.Call:
+    def get_call_args_and_keywords(self) -> Tuple[List[ast.AST], List[ast.keyword]]:
         """
-        Generates the invocation call for this method, assuming the arguments
-        being passed in are the same name as the parameters defined in this
-        function.
+        Generate the call args and keywords for the instance method.
 
         Returns:
-            ast.Call: ast representation of a Callable that will call this instances method.
-            This should be wrapped in an ast.Expr before compiling.
+            Tuple[List[ast.AST], List[ast.keyword]]: Tuple of the list of arguments and the list of keywords
+            to call this method.
         """
         args = [ast.Name(id=arg, ctx=ast.Load()) for arg in self.method.call_args]
         if self.method.has_arg_unpack:
@@ -39,6 +37,27 @@ class MethodInvocation:
                     arg=None, value=ast.Name(id=self.method.varkw, ctx=ast.Load())
                 )
             )
+        return args, keywords
+
+    def to_function_call(
+        self, args: List[ast.AST] = None, keywords: List[ast.keyword] = None
+    ) -> ast.Call:
+        """
+        Generates the invocation call for this method, assuming the arguments
+        being passed in are the same name as the parameters defined in this
+        function.
+
+        Returns:
+            ast.Call: ast representation of a Callable that will call this instances method.
+            This should be wrapped in an ast.Expr before compiling.
+        """
+
+        if args is None or keywords is None:
+            __args, __keywords = self.get_call_args_and_keywords()
+            if args is None:
+                args = __args
+            if keywords is None:
+                keywords = __keywords
 
         return ast.Call(
             func=ast.Attribute(

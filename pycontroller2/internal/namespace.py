@@ -1,10 +1,10 @@
 ####
 # Arguments
-PARTITION_ARG_NAME = "partition"
-K_ARG_NAME = "k"
-CHOSEN_ARG_NAME = "chosen"
-PREFERENCE_ARG_A_NAME = "a"
-PREFERENCE_ARG_B_NAME = "b"
+CHOSEN_ARG_NAME = "__ctrl_chosen__"
+PARTITION_ARG_NAME = "__ctrl_partition__"
+K_ARG_NAME = "__ctrl_k__"
+PREFERENCE_ARG_A_NAME = "__ctrl_a__"
+PREFERENCE_ARG_B_NAME = "__ctrl_b__"
 CLASS_ARG_NAME = "self"
 
 
@@ -17,9 +17,9 @@ PREFERENCE_CMP_METHOD_NAME = "preference_cmp"
 ACTION_METHOD_NAME = "action"
 FOLD_METHOD_NAME = "fold"
 POST_CONTROLLER_METHOD_NAME = "post_controller"
-GENERATED_CALL_METHOD_NAME = "call_fn"
+GENERATED_CALL_METHOD_NAME = "__ctrl_call__"
 
 
 ####
 # Variable Names
-ACTION_RESULT_ASSIGNMENT_NAME = "_ctrl_result_"
+ACTION_RESULT_ASSIGNMENT_NAME = "__ctrl_result__"

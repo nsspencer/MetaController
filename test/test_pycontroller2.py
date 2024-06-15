@@ -93,27 +93,31 @@ class TestDoOne(unittest.TestCase):
                 self.action_passed = False
                 self.post_controller_passed = False
 
-            def pre_controller(self) -> None:
-                self.pre_controller_passed = True
+            def pre_controller(self, arg1) -> None:
+                self.pre_controller_passed = arg1
 
-            def filter(self, chosen) -> bool:
-                self.filter_passed = True
+            def filter(self, chosen, arg1) -> bool:
+                self.filter_passed = arg1
                 return True
 
-            def preference_key(self, chosen):
-                self.preference_key_passed = True
+            def preference_key(self, chosen, arg1):
+                self.preference_key_passed = arg1
                 return chosen
 
-            def action(self, chosen):
-                self.action_passed = True
+            # def preference_cmp(self, a, b, arg1) -> int:
+            #     self.preference_key_passed = arg1
+            #     return -1 if a < b else 1 if a > b else 0
+
+            def action(self, chosen, arg1: bool):
+                self.action_passed = arg1
                 return chosen
 
-            def post_controller(self) -> None:
-                self.post_controller_passed = True
+            def post_controller(self, arg1) -> None:
+                self.post_controller_passed = arg1
 
         inst = BasicDoOne()
         elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0]
-        result = inst(elements)
+        result = inst(elements, True)
         self.assertTrue(result == 0)
         self.assertTrue(inst.pre_controller_passed)
         self.assertTrue(inst.filter_passed)

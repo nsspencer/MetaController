@@ -8,8 +8,10 @@ from typing import Any, Callable
 from pycontroller2.internal.controlled_method import MethodInvocation
 from pycontroller2.internal.exceptions import InvalidControllerMethod
 from pycontroller2.internal.namespace import (
+    ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CHOSEN_ARG_NAME,
+    FILTER_METHOD_NAME,
     FOLD_METHOD_NAME,
     GENERATED_CALL_METHOD_NAME,
     PARTITION_ARG_NAME,
@@ -27,14 +29,38 @@ class DoOneImplementation(BaseControllerImplementation):
     def validate(self) -> None:
         super().validate()
         if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}", and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
-            err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more optimal.'
+            err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}" and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
+            err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more performant.'
             raise InvalidControllerMethod(err)
 
         if self.has_fold:
             warnings.warn(
                 f'DoOne does not support the "{FOLD_METHOD_NAME}" method, but one is defined in "{self.name}". It will be ignored.'
             )
+
+        if self.has_filter:
+            if len(self.filter.call_args) < 1:
+                raise AttributeError(
+                    f'"{FILTER_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
+                )
+
+        if self.has_preference_key:
+            if len(self.preference_key.call_args) < 1:
+                raise AttributeError(
+                    f'"{PREFERENCE_KEY_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
+                )
+
+        if self.has_preference_cmp:
+            if len(self.preference_cmp.call_args) < 2:
+                raise AttributeError(
+                    f'"{PREFERENCE_CMP_METHOD_NAME}" should be defined with at least 2 non-class arguments (a, b), but {len(self.preference_cmp.call_args)} were given.'
+                )
+
+        if self.has_action:
+            if len(self.action.call_args) < 1:
+                raise AttributeError(
+                    f'"{ACTION_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
+                )
 
     def generate_call_method(self) -> Callable[..., Any]:
         body = []
@@ -77,7 +103,7 @@ class DoOneImplementation(BaseControllerImplementation):
 
         if self.has_preference_cmp:
             preference_lambda = MethodInvocation(self.preference_cmp).to_lambda(
-                [self.preference_cmp.call_args[:2]]
+                self.preference_cmp.call_args[:2]
             )
 
             if self.cls.reverse_preference:
@@ -121,17 +147,27 @@ class DoOneImplementation(BaseControllerImplementation):
         chosen_element = ast.Assign(
             targets=[ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Store())], value=get_elements
         )
-        result = ast.Assign(
-            targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
-            value=ast.Constant(value=None, kind=None),
-        )
-        body.append(result)
         body.append(chosen_element)
 
         if self.has_action:
+            action_invoke = MethodInvocation(self.action)
+            action_args, action_keywords = action_invoke.get_call_args_and_keywords()
+
+            # remove the original argument and replace it with the index 0 of the get_elements statement
+            action_args.pop(0)
+            action_args.insert(
+                0,
+                ast.Subscript(
+                    value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load()),
+                    slice=ast.Num(n=0),
+                    ctx=ast.Load(),
+                ),
+            )
             action_result = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
-                value=MethodInvocation(self.action).to_function_call(),
+                value=MethodInvocation(self.action).to_function_call(
+                    action_args, action_keywords
+                ),
             )
 
             # check if there is an element that we should act on
@@ -145,21 +181,15 @@ class DoOneImplementation(BaseControllerImplementation):
                     ops=[ast.NotEq()],
                     comparators=[ast.Constant(value=0, kind="int")],
                 ),
-                body=[
-                    ast.Assign(
-                        targets=[
-                            ast.Name(id=self.action.call_args[0], ctx=ast.Store())
-                        ],
-                        value=ast.Subscript(
-                            value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load()),
-                            slice=ast.Num(n=0),
-                            ctx=ast.Load(),
-                        ),
-                    ),
-                    action_result,
-                ],
+                body=[action_result],
                 orelse=[],
             )
+
+            result = ast.Assign(
+                targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
+                value=ast.Constant(value=None, kind=None),
+            )
+            body.append(result)
             body.append(if_check)
 
         if self.has_post_controller:
@@ -168,9 +198,14 @@ class DoOneImplementation(BaseControllerImplementation):
             ).to_function_call()
             body.append(ast.Expr(value=post_controller_call))
 
-        body.append(
-            ast.Return(value=ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load()))
-        )
+        if self.has_action:
+            body.append(
+                ast.Return(
+                    value=ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load())
+                )
+            )
+        else:
+            body.append(ast.Return(value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load())))
 
         args, saved_defaults = self.get_call_args(
             use_class_arg=True,
