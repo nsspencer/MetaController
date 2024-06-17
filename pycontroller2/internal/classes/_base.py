@@ -15,8 +15,8 @@ from pycontroller2.internal.namespace import (
     PARTITION_ARG_NAME,
     POST_CONTROLLER_METHOD_NAME,
     PRE_CONTROLLER_METHOD_NAME,
-    PREFERENCE_CMP_METHOD_NAME,
-    PREFERENCE_KEY_METHOD_NAME,
+    SORT_CMP_METHOD_NAME,
+    SORT_KEY_METHOD_NAME,
 )
 
 
@@ -56,14 +56,14 @@ class BaseControllerImplementation(ABC):
         )
 
         self.__preference_key = (
-            MethodInspector(self.attrs[PREFERENCE_KEY_METHOD_NAME])
-            if PREFERENCE_KEY_METHOD_NAME in self.attrs and preference_key_enabled
+            MethodInspector(self.attrs[SORT_KEY_METHOD_NAME])
+            if SORT_KEY_METHOD_NAME in self.attrs and preference_key_enabled
             else None
         )
 
         self.__preference_cmp = (
-            MethodInspector(self.attrs[PREFERENCE_CMP_METHOD_NAME])
-            if PREFERENCE_CMP_METHOD_NAME in self.attrs and preference_cmp_enabled
+            MethodInspector(self.attrs[SORT_CMP_METHOD_NAME])
+            if SORT_CMP_METHOD_NAME in self.attrs and preference_cmp_enabled
             else None
         )
 
@@ -133,7 +133,7 @@ class BaseControllerImplementation(ABC):
         return self.__preference_key is not None
 
     @property
-    def preference_key(self) -> MethodInspector | None:
+    def sort_key(self) -> MethodInspector | None:
         return self.__preference_key
 
     @property
@@ -141,7 +141,7 @@ class BaseControllerImplementation(ABC):
         return self.__preference_cmp is not None
 
     @property
-    def preference_cmp(self) -> MethodInspector | None:
+    def sort_cmp(self) -> MethodInspector | None:
         return self.__preference_cmp
 
     @property
@@ -279,17 +279,17 @@ class BaseControllerImplementation(ABC):
 
         preference_key_args = []
         if self.has_preference_key:
-            arg_start_index = 0 if self.preference_key.is_staticmethod else 1
+            arg_start_index = 0 if self.sort_key.is_staticmethod else 1
             arg_start_index += required_preference_key_args
-            preference_key_args = self.preference_key.get_non_defaulted_args()[
+            preference_key_args = self.sort_key.get_non_defaulted_args()[
                 arg_start_index:
             ]
 
         preference_cmp_args = []
         if self.has_preference_cmp:
-            arg_start_index = 0 if self.preference_cmp.is_staticmethod else 1
+            arg_start_index = 0 if self.sort_cmp.is_staticmethod else 1
             arg_start_index += required_preference_cmp_args
-            preference_cmp_args = self.preference_cmp.get_non_defaulted_args()[
+            preference_cmp_args = self.sort_cmp.get_non_defaulted_args()[
                 arg_start_index:
             ]
 
@@ -342,7 +342,7 @@ class BaseControllerImplementation(ABC):
                 if current_arg is None:
                     current_arg = preference_key_args[index]
                 elif current_arg != preference_key_args[index]:
-                    msg = f'{PREFERENCE_KEY_METHOD_NAME} argument {index} "{preference_key_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
+                    msg = f'{SORT_KEY_METHOD_NAME} argument {index} "{preference_key_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
                     msg += shared_msg
                     raise ArgumentError(msg)
 
@@ -350,7 +350,7 @@ class BaseControllerImplementation(ABC):
                 if current_arg is None:
                     current_arg = preference_cmp_args[index]
                 elif current_arg != preference_cmp_args[index]:
-                    msg = f'{PREFERENCE_CMP_METHOD_NAME} argument {index} "{preference_cmp_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
+                    msg = f'{SORT_CMP_METHOD_NAME} argument {index} "{preference_cmp_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
                     msg += shared_msg
                     raise ArgumentError(msg)
 
@@ -452,20 +452,20 @@ class BaseControllerImplementation(ABC):
 
         if self.has_preference_key:
             add_non_conflicting_parameters(
-                self.preference_key.get_defaulted_args(), args, defaults
+                self.sort_key.get_defaulted_args(), args, defaults
             )
             add_non_conflicting_parameters(
-                self.preference_key.get_keyword_only_args(),
+                self.sort_key.get_keyword_only_args(),
                 kwonlyargs,
                 kw_defaults,
             )
 
         if self.has_preference_cmp:
             add_non_conflicting_parameters(
-                self.preference_cmp.get_defaulted_args(), args, defaults
+                self.sort_cmp.get_defaulted_args(), args, defaults
             )
             add_non_conflicting_parameters(
-                self.preference_cmp.get_keyword_only_args(),
+                self.sort_cmp.get_keyword_only_args(),
                 kwonlyargs,
                 kw_defaults,
             )
@@ -511,28 +511,28 @@ class BaseControllerImplementation(ABC):
                 )
         if self.has_preference_key:
             if arg_unpack_name is None:
-                arg_unpack_name = self.preference_key.varargs
+                arg_unpack_name = self.sort_key.varargs
             elif (
-                self.preference_key.has_arg_unpack
-                and self.preference_key.varargs != arg_unpack_name
+                self.sort_key.has_arg_unpack
+                and self.sort_key.varargs != arg_unpack_name
             ):
                 raise ArgumentError(
                     dedent(
-                        f'{PREFERENCE_KEY_METHOD_NAME} controlled action uses "{self.preference_key.varargs}" as the argument unpack variable name, \
+                        f'{SORT_KEY_METHOD_NAME} controlled action uses "{self.sort_key.varargs}" as the argument unpack variable name, \
                     but it was previously defined as "{arg_unpack_name}". \
                     The argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
         if self.has_preference_cmp:
             if arg_unpack_name is None:
-                arg_unpack_name = self.preference_cmp.varargs
+                arg_unpack_name = self.sort_cmp.varargs
             elif (
-                self.preference_cmp.has_arg_unpack
-                and self.preference_cmp.varargs != arg_unpack_name
+                self.sort_cmp.has_arg_unpack
+                and self.sort_cmp.varargs != arg_unpack_name
             ):
                 raise ArgumentError(
                     dedent(
-                        f'{PREFERENCE_CMP_METHOD_NAME} controlled action uses "{self.preference_cmp.varargs}" as the argument unpack variable name, \
+                        f'{SORT_CMP_METHOD_NAME} controlled action uses "{self.sort_cmp.varargs}" as the argument unpack variable name, \
                     but it was previously defined as "{arg_unpack_name}". \
                     The argument unpack variable must be the same name across all controlled methods that use it.'
                     )
@@ -594,28 +594,22 @@ class BaseControllerImplementation(ABC):
                 )
         if self.has_preference_key:
             if kwarg_name is None:
-                kwarg_name = self.preference_key.varkw
-            elif (
-                self.preference_key.has_kwarg_unpack
-                and self.preference_key.varkw != kwarg_name
-            ):
+                kwarg_name = self.sort_key.varkw
+            elif self.sort_key.has_kwarg_unpack and self.sort_key.varkw != kwarg_name:
                 raise ArgumentError(
                     dedent(
-                        f'{PREFERENCE_KEY_METHOD_NAME} controlled action uses "{self.preference_key.varkw}" as the keyword argument unpack variable name, \
+                        f'{SORT_KEY_METHOD_NAME} controlled action uses "{self.sort_key.varkw}" as the keyword argument unpack variable name, \
                     but it was previously defined as "{kwarg_name}". \
                     The keyword argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
         if self.has_preference_cmp:
             if kwarg_name is None:
-                kwarg_name = self.preference_cmp.varkw
-            elif (
-                self.preference_cmp.has_kwarg_unpack
-                and self.preference_cmp.varkw != kwarg_name
-            ):
+                kwarg_name = self.sort_cmp.varkw
+            elif self.sort_cmp.has_kwarg_unpack and self.sort_cmp.varkw != kwarg_name:
                 raise ArgumentError(
                     dedent(
-                        f'{PREFERENCE_CMP_METHOD_NAME} controlled action uses "{self.preference_cmp.varkw}" as the keyword argument unpack variable name, \
+                        f'{SORT_CMP_METHOD_NAME} controlled action uses "{self.sort_cmp.varkw}" as the keyword argument unpack variable name, \
                     but it was previously defined as "{kwarg_name}". \
                     The keyword argument unpack variable must be the same name across all controlled methods that use it.'
                     )

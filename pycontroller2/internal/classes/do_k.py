@@ -20,8 +20,8 @@ from pycontroller2.internal.namespace import (
     GENERATED_CALL_METHOD_NAME,
     K_ARG_NAME,
     PARTITION_ARG_NAME,
-    PREFERENCE_CMP_METHOD_NAME,
-    PREFERENCE_KEY_METHOD_NAME,
+    SORT_CMP_METHOD_NAME,
+    SORT_KEY_METHOD_NAME,
 )
 
 from ._base import BaseControllerImplementation
@@ -34,8 +34,8 @@ class DoKImplementation(BaseControllerImplementation):
     def validate(self) -> None:
         super().validate()
         if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}" and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
-            err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more performant.'
+            err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
+            err += f' You must define only one. Note that "{SORT_KEY_METHOD_NAME}" is more performant.'
             raise InvalidControllerMethodError(err)
 
         if self.has_filter:
@@ -45,15 +45,15 @@ class DoKImplementation(BaseControllerImplementation):
                 )
 
         if self.has_preference_key:
-            if len(self.preference_key.call_args) < 1:
+            if len(self.sort_key.call_args) < 1:
                 raise AttributeError(
-                    f'"{PREFERENCE_KEY_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
+                    f'"{SORT_KEY_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
                 )
 
         if self.has_preference_cmp:
-            if len(self.preference_cmp.call_args) < 2:
+            if len(self.sort_cmp.call_args) < 2:
                 raise AttributeError(
-                    f'"{PREFERENCE_CMP_METHOD_NAME}" should be defined with at least 2 non-class arguments (a, b), but {len(self.preference_cmp.call_args)} were given.'
+                    f'"{SORT_CMP_METHOD_NAME}" should be defined with at least 2 non-class arguments (a, b), but {len(self.sort_cmp.call_args)} were given.'
                 )
 
         if self.has_action:
@@ -102,14 +102,14 @@ class DoKImplementation(BaseControllerImplementation):
             )
 
         if self.has_preference_key:
-            if self.preference_key.num_call_parameters != 1:
-                preference_fn = MethodInvocation(self.preference_key).to_lambda(
-                    [self.preference_key.call_args[0]]
+            if self.sort_key.num_call_parameters != 1:
+                preference_fn = MethodInvocation(self.sort_key).to_lambda(
+                    [self.sort_key.call_args[0]]
                 )
             else:
                 preference_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                    attr=PREFERENCE_KEY_METHOD_NAME,
+                    attr=SORT_KEY_METHOD_NAME,
                     ctx=ast.Load(),
                 )
 
@@ -127,14 +127,14 @@ class DoKImplementation(BaseControllerImplementation):
             )
 
         if self.has_preference_cmp:
-            if self.preference_cmp.num_call_parameters != 2:
-                preference_fn = MethodInvocation(self.preference_cmp).to_lambda(
-                    self.preference_cmp.call_args[:2]
+            if self.sort_cmp.num_call_parameters != 2:
+                preference_fn = MethodInvocation(self.sort_cmp).to_lambda(
+                    self.sort_cmp.call_args[:2]
                 )
             else:
                 preference_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                    attr=PREFERENCE_CMP_METHOD_NAME,
+                    attr=SORT_CMP_METHOD_NAME,
                     ctx=ast.Load(),
                 )
 

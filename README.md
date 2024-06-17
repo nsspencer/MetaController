@@ -22,8 +22,8 @@
 Arguments are resolved in the following order:
 Pre controller
 filter
-preference_key
-preference_cmp
+sort_key
+sort_cmp
 action
 fold
 post_controller
@@ -73,14 +73,14 @@ This wraps the *get_elements* ast and becomes the new *get_elements*
 * If DoK: Use heapq.nsmallest(k), or heapq.nlargest(k) if reversed
 * If DoAll: Use sorted(), or sorted(reverse=True) if reversed
 
-For preference_key:
+For sort_key:
 * This method receives 1 argument, chosen.
-* If return value from preference_key is the same value as the one passed in, and no side effects took place, assume there is no key and we are using the __lt__ or __gt__ defined in the chosen class instance.
+* If return value from sort_key is the same value as the one passed in, and no side effects took place, assume there is no key and we are using the __lt__ or __gt__ defined in the chosen class instance.
 * Else, use key=... in any three of the functions listed above
 
-For preference_cmp:
+For sort_cmp:
 * This method receives 2 arguments, A and B.
-* Use key=functools.cmp_to_key(preference_cmp)
+* Use key=functools.cmp_to_key(sort_cmp)
 
 In the case that we use a key=... and the controlled method is passed additional arguments, wrap the method in a closure that has access to all non-local scope arguments and return a call to it as the key=closure(*NO_ARGS*, *NO_KWARGS*). 
 

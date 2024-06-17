@@ -6,8 +6,8 @@ from pycontroller2.internal.exceptions import InvalidControllerMethodError
 from pycontroller2.internal.namespace import (
     ACTION_RESULT_ASSIGNMENT_NAME,
     GENERATED_CALL_METHOD_NAME,
-    PREFERENCE_CMP_METHOD_NAME,
-    PREFERENCE_KEY_METHOD_NAME,
+    SORT_CMP_METHOD_NAME,
+    SORT_KEY_METHOD_NAME,
 )
 
 from ._base import BaseControllerImplementation
@@ -20,8 +20,8 @@ class DoAllImplementation(BaseControllerImplementation):
     def validate(self) -> None:
         super().validate()
         if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoAll controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}", and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
-            err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more optimal.'
+            err = f'DoAll controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}", and "{SORT_CMP_METHOD_NAME}") are defined.'
+            err += f' You must define only one. Note that "{SORT_KEY_METHOD_NAME}" is more optimal.'
             raise InvalidControllerMethodError(err)
 
     def generate_call_method(self) -> Callable[..., Any]:
@@ -38,11 +38,11 @@ class DoAllImplementation(BaseControllerImplementation):
             # TODO make a call to filter with this
 
         if self.has_preference_key:
-            preference_call = MethodInvocation(self.preference_key).to_function_call()
+            preference_call = MethodInvocation(self.sort_key).to_function_call()
             # TODO make a nsmallest call here with this
 
         if self.has_preference_cmp:
-            preference_call = MethodInvocation(self.preference_cmp).to_function_call()
+            preference_call = MethodInvocation(self.sort_cmp).to_function_call()
             # TODO make a nsmallest call here with this
 
         if self.has_action:

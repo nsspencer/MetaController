@@ -100,11 +100,11 @@ class TestDoOne(unittest.TestCase):
                 self.filter_passed = True
                 return True
 
-            def preference_key(self, chosen):
+            def sort_key(self, chosen):
                 self.preference_key_passed = True
                 return chosen
 
-            # def preference_cmp(self, a, b, arg1) -> int:
+            # def sort_cmp(self, a, b, arg1) -> int:
             #     self.preference_key_passed = arg1
             #     return -1 if a < b else 1 if a > b else 0
 
@@ -144,11 +144,11 @@ class TestDoK(unittest.TestCase):
                 self.filter_passed = True
                 return True
 
-            # def preference_key(self, chosen):
+            # def sort_key(self, chosen):
             #     self.preference_key_passed = True
             #     return chosen
 
-            def preference_cmp(self, a, b, arg1) -> int:
+            def sort_cmp(self, a, b, arg1) -> int:
                 self.preference_key_passed = arg1
                 return -1 if a < b else 1 if a > b else 0
 
