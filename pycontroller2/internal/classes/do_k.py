@@ -1,5 +1,4 @@
 import ast
-import warnings
 from functools import cmp_to_key
 from heapq import nlargest, nsmallest
 from itertools import islice
@@ -13,7 +12,6 @@ from pycontroller2.internal.exceptions import (
 from pycontroller2.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
-    CHOSEN_ARG_NAME,
     CLASS_ARG_NAME,
     FILTER_METHOD_NAME,
     FOLD_METHOD_NAME,
@@ -34,7 +32,7 @@ class DoKImplementation(BaseControllerImplementation):
     def validate(self) -> None:
         super().validate()
         if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
+            err = f'DoK controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
             err += f' You must define only one. Note that "{SORT_KEY_METHOD_NAME}" is more performant.'
             raise InvalidControllerMethodError(err)
 
