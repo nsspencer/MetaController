@@ -233,8 +233,8 @@ class DoOneImplementation(BaseControllerImplementation):
             use_class_arg=True,
             use_k_arg=False,
             use_partition_arg=True,
-            required_action_args=1,
         )
+
         additional_globals.update(saved_defaults)
         call_fn = ast.FunctionDef(
             name=GENERATED_CALL_METHOD_NAME,

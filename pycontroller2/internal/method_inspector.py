@@ -79,6 +79,14 @@ class MethodInspector:
         return self.__has_value_yield_from
 
     @property
+    def returns_a_value(self) -> bool:
+        return (
+            self.has_explicit_value_return
+            or self.has_value_yield
+            or self.has_value_yield_from
+        )
+
+    @property
     def has_parse_error(self) -> bool:
         if self.__error is None:
             self._parse_return_options()
