@@ -6,7 +6,7 @@ from itertools import islice
 from typing import Any, Callable
 
 from pycontroller2.internal.controlled_method import MethodInvocation
-from pycontroller2.internal.exceptions import InvalidControllerMethod
+from pycontroller2.internal.exceptions import InvalidControllerMethodError
 from pycontroller2.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
@@ -32,7 +32,7 @@ class DoOneImplementation(BaseControllerImplementation):
         if self.has_preference_key and self.has_preference_cmp:
             err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}" and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
             err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more performant.'
-            raise InvalidControllerMethod(err)
+            raise InvalidControllerMethodError(err)
 
         if self.has_fold:
             warnings.warn(

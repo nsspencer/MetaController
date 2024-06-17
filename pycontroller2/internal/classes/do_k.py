@@ -6,7 +6,10 @@ from itertools import islice
 from typing import Any, Callable
 
 from pycontroller2.internal.controlled_method import MethodInvocation
-from pycontroller2.internal.exceptions import InvalidControllerMethod, NoReturnError
+from pycontroller2.internal.exceptions import (
+    InvalidControllerMethodError,
+    InvalidReturnError,
+)
 from pycontroller2.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
@@ -33,7 +36,7 @@ class DoKImplementation(BaseControllerImplementation):
         if self.has_preference_key and self.has_preference_cmp:
             err = f'DoOne controller "{self.name}" is invalid because both preference methods ("{PREFERENCE_KEY_METHOD_NAME}" and "{PREFERENCE_CMP_METHOD_NAME}") are defined.'
             err += f' You must define only one. Note that "{PREFERENCE_KEY_METHOD_NAME}" is more performant.'
-            raise InvalidControllerMethod(err)
+            raise InvalidControllerMethodError(err)
 
         if self.has_filter:
             if len(self.filter.call_args) < 1:
@@ -66,7 +69,7 @@ class DoKImplementation(BaseControllerImplementation):
                 )
 
             if self.has_action and not self.action.returns_a_value:
-                raise NoReturnError(
+                raise InvalidReturnError(
                     f'"{FOLD_METHOD_NAME}" was defined, but "{ACTION_METHOD_NAME}" does not return anything.'
                 )
 
@@ -212,7 +215,13 @@ class DoKImplementation(BaseControllerImplementation):
                 action = ast.For(
                     target=ast.Name(id=action_args[0].id, ctx=ast.Store()),
                     iter=get_elements,
-                    body=[action_invoke.to_function_call(action_args, action_keywords)],
+                    body=[
+                        ast.Expr(
+                            value=action_invoke.to_function_call(
+                                action_args, action_keywords
+                            )
+                        )
+                    ],
                     orelse=[],
                 )
 
