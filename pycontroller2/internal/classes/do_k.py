@@ -231,9 +231,13 @@ class DoKImplementation(BaseControllerImplementation):
             fold_invoke = MethodInvocation(self.fold)
             fold_args, fold_keywords = fold_invoke.get_call_args_and_keywords()
             fold_args.pop(0)
-            fold_args.insert(
-                0, ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load())
-            )
+
+            if self.has_action:
+                fold_args.insert(
+                    0, ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load())
+                )
+            else:
+                fold_args.insert(0, get_elements)
 
             fold_assignment = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
