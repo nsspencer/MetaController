@@ -96,12 +96,12 @@ class TestDoOne(unittest.TestCase):
             def pre_controller(self, arg1) -> None:
                 self.pre_controller_passed = arg1
 
-            def filter(self, chosen, arg1) -> bool:
-                self.filter_passed = arg1
+            def filter(self, chosen) -> bool:
+                self.filter_passed = True
                 return True
 
-            def preference_key(self, chosen, arg1):
-                self.preference_key_passed = arg1
+            def preference_key(self, chosen):
+                self.preference_key_passed = True
                 return chosen
 
             # def preference_cmp(self, a, b, arg1) -> int:

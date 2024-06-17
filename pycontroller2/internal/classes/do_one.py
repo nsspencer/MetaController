@@ -11,6 +11,7 @@ from pycontroller2.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CHOSEN_ARG_NAME,
+    CLASS_ARG_NAME,
     FILTER_METHOD_NAME,
     FOLD_METHOD_NAME,
     GENERATED_CALL_METHOD_NAME,
@@ -74,19 +75,33 @@ class DoOneImplementation(BaseControllerImplementation):
             body.append(ast.Expr(value=pre_controller_call))
 
         if self.has_filter:
-            filter_lambda = MethodInvocation(self.filter).to_lambda(
-                [self.filter.call_args[0]]
-            )
+            if self.filter.num_call_parameters != 1:
+                filter_fn = MethodInvocation(self.filter).to_lambda(
+                    [self.filter.call_args[0]]
+                )
+            else:
+                filter_fn = ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=FILTER_METHOD_NAME,
+                    ctx=ast.Load(),
+                )
             get_elements = ast.Call(
                 func=ast.Name(id="filter", ctx=ast.Load()),
-                args=[filter_lambda, get_elements],
+                args=[filter_fn, get_elements],
                 keywords=[],
             )
 
         if self.has_preference_key:
-            preference_lambda = MethodInvocation(self.preference_key).to_lambda(
-                [self.preference_key.call_args[0]]
-            )
+            if self.preference_key.num_call_parameters != 1:
+                preference_fn = MethodInvocation(self.preference_key).to_lambda(
+                    [self.preference_key.call_args[0]]
+                )
+            else:
+                preference_fn = ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=PREFERENCE_KEY_METHOD_NAME,
+                    ctx=ast.Load(),
+                )
 
             if self.cls.reverse_preference:
                 sort_fn = ast.Name(id="nlargest", ctx=ast.Load())
@@ -98,13 +113,20 @@ class DoOneImplementation(BaseControllerImplementation):
             get_elements = ast.Call(
                 func=sort_fn,
                 args=[ast.Constant(value=1, kind="int"), get_elements],
-                keywords=[ast.keyword(arg="key", value=preference_lambda)],
+                keywords=[ast.keyword(arg="key", value=preference_fn)],
             )
 
         if self.has_preference_cmp:
-            preference_lambda = MethodInvocation(self.preference_cmp).to_lambda(
-                self.preference_cmp.call_args[:2]
-            )
+            if self.preference_cmp.num_call_parameters != 2:
+                preference_fn = MethodInvocation(self.preference_cmp).to_lambda(
+                    self.preference_cmp.call_args[:2]
+                )
+            else:
+                preference_fn = ast.Attribute(
+                    value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
+                    attr=PREFERENCE_CMP_METHOD_NAME,
+                    ctx=ast.Load(),
+                )
 
             if self.cls.reverse_preference:
                 sort_fn = ast.Name(id="nlargest", ctx=ast.Load())
@@ -121,7 +143,7 @@ class DoOneImplementation(BaseControllerImplementation):
                         arg="key",
                         value=ast.Call(
                             func=ast.Name(id="cmp_to_key", ctx=ast.Load()),
-                            args=[preference_lambda],
+                            args=[preference_fn],
                             keywords=[],
                         ),
                     )

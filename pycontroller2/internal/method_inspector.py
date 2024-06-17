@@ -116,6 +116,22 @@ class MethodInspector:
         return self.args[1:]
 
     @property
+    def num_parameters(self) -> int:
+        counter = 0
+        counter += len(self.args)
+        counter += len(self.kwonlyargs)
+        counter += 1 if self.varargs is not None else 0
+        counter += 1 if self.varkw is not None else 0
+        return counter
+
+    @property
+    def num_call_parameters(self) -> int:
+        counter = self.num_parameters
+        if not self.is_staticmethod:
+            counter = max(counter - 1, 0)  # remove the class argument
+        return counter
+
+    @property
     def varargs(self) -> str:
         return self._signature_dict["varargs"] or None
 
