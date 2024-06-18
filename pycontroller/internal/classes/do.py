@@ -2,10 +2,13 @@ import ast
 import warnings
 from typing import Any, Callable
 
-from pycontroller2.internal.controlled_method import MethodInvocation
-from pycontroller2.internal.namespace import (
+from pycontroller.internal.method_invocation import MethodInvocation
+from pycontroller.internal.namespace import (
+    ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     GENERATED_CALL_METHOD_NAME,
+    POST_CONTROLLER_METHOD_NAME,
+    PRE_CONTROLLER_METHOD_NAME,
 )
 
 from ._base import BaseControllerImplementation
@@ -48,20 +51,22 @@ class DoImplementation(BaseControllerImplementation):
         if self.has_pre_controller:
             pre_controller_call = MethodInvocation(
                 self.pre_controller
-            ).to_function_call()
+            ).to_function_call(name=PRE_CONTROLLER_METHOD_NAME)
             body.append(ast.Expr(value=pre_controller_call))
 
         if self.has_action:
             result = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
-                value=MethodInvocation(self.action).to_function_call(),
+                value=MethodInvocation(self.action).to_function_call(
+                    name=ACTION_METHOD_NAME
+                ),
             )
             body.append(result)
 
         if self.has_post_controller:
             post_controller_call = MethodInvocation(
                 self.post_controller
-            ).to_function_call()
+            ).to_function_call(name=POST_CONTROLLER_METHOD_NAME)
             body.append(ast.Expr(value=post_controller_call))
 
         if self.has_action:

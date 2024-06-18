@@ -1,8 +1,8 @@
 import ast
 from typing import List, Tuple
 
-from pycontroller2.internal.method_inspector import MethodInspector
-from pycontroller2.internal.namespace import CLASS_ARG_NAME
+from pycontroller.internal.method_inspector import MethodInspector
+from pycontroller.internal.namespace import CLASS_ARG_NAME
 
 
 class MethodInvocation:
@@ -40,7 +40,10 @@ class MethodInvocation:
         return args, keywords
 
     def to_function_call(
-        self, args: List[ast.AST] = None, keywords: List[ast.keyword] = None
+        self,
+        args: List[ast.AST] = None,
+        keywords: List[ast.keyword] = None,
+        name: str = None,
     ) -> ast.Call:
         """
         Generates the invocation call for this method, assuming the arguments
@@ -59,17 +62,21 @@ class MethodInvocation:
             if keywords is None:
                 keywords = __keywords
 
+        if name is None:
+            _name = self.method.name
+        else:
+            _name = name
         return ast.Call(
             func=ast.Attribute(
                 value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
-                attr=self.method.name,
+                attr=_name,
                 ctx=ast.Load(),
             ),
             args=args,
             keywords=keywords,
         )
 
-    def to_lambda(self, lambda_args: List[str]) -> ast.Lambda:
+    def to_lambda(self, lambda_args: List[str], name: str = None) -> ast.Lambda:
         args = ast.arguments(
             posonlyargs=[],
             args=[ast.arg(arg=arg, annotation=None) for arg in lambda_args],
@@ -79,4 +86,4 @@ class MethodInvocation:
             kwarg=None,
             defaults=[],
         )
-        return ast.Lambda(args=args, body=self.to_function_call())
+        return ast.Lambda(args=args, body=self.to_function_call(name=name))

@@ -4,18 +4,17 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from pycontroller import DoK
+from pycontroller import DoOne
 
 
-class TestDoKSmoke(unittest.TestCase):
-    def test_basic(test_self):
-        class BasicDoK(DoK):
+class TestDoOneSmoke(unittest.TestCase):
+    def test_basic(self):
+        class BasicDoOne(DoOne):
             def __init__(self):
                 self.pre_controller_passed = False
                 self.filter_passed = False
                 self.preference_key_passed = False
                 self.action_passed = False
-                self.fold_passed = False
                 self.post_controller_passed = False
 
             def pre_controller(self, arg1) -> None:
@@ -33,24 +32,18 @@ class TestDoKSmoke(unittest.TestCase):
                 self.action_passed = arg1
                 return chosen
 
-            def fold(self, results: list) -> int:
-                self.fold_passed = True
-                test_self.assertTrue(len(results)) == 5
-                return sum(results)
-
             def post_controller(self, arg1) -> None:
                 self.post_controller_passed = arg1
 
-        inst = BasicDoK()
+        inst = BasicDoOne()
         elements = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0]
-        result = inst(5, elements, True)
-        test_self.assertTrue(result == sum(sorted(elements)[:5]))
-        test_self.assertTrue(inst.pre_controller_passed)
-        test_self.assertTrue(inst.filter_passed)
-        test_self.assertTrue(inst.preference_key_passed)
-        test_self.assertTrue(inst.action_passed)
-        test_self.assertTrue(inst.fold_passed)
-        test_self.assertTrue(inst.post_controller_passed)
+        result = inst(elements, True)
+        self.assertTrue(result == 0)
+        self.assertTrue(inst.pre_controller_passed)
+        self.assertTrue(inst.filter_passed)
+        self.assertTrue(inst.preference_key_passed)
+        self.assertTrue(inst.action_passed)
+        self.assertTrue(inst.post_controller_passed)
 
 
 if __name__ == "__main__":

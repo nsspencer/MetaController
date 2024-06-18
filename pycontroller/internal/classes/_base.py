@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from pycontroller2.internal.exceptions import ArgumentError
-from pycontroller2.internal.method_inspector import MethodInspector
-from pycontroller2.internal.namespace import (
+from pycontroller.internal.exceptions import ArgumentError
+from pycontroller.internal.method_inspector import MethodInspector
+from pycontroller.internal.namespace import (
     ACTION_METHOD_NAME,
     CLASS_ARG_NAME,
     FILTER_METHOD_NAME,

@@ -3,6 +3,7 @@ from typing import (
     Any,
     Generic,
     Iterable,
+    List,
     Protocol,
     TypeAlias,
     TypeVar,
@@ -147,8 +148,6 @@ class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
 class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = False
     reverse_preference: bool = False
-    num_threads: None | int = None
-    num_processes: None | int = None
 
     ###
     # Valid User Defined Methods:
@@ -166,7 +165,7 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 
     def post_controller(self) -> None: ...
 
-    def fold(self, results: Iterable[TActionReturn]) -> TFoldReturn: ...
+    def fold(self, results: List[TActionReturn]) -> TFoldReturn: ...
 
     ###
     # Built-in Instance Methods
@@ -200,8 +199,6 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = False
     reverse_preference: bool = False
-    num_threads: None | int = None
-    num_processes: None | int = None
 
     ###
     # Valid User Defined Methods:
@@ -219,7 +216,7 @@ class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaControll
 
     def post_controller(self) -> None: ...
 
-    def fold(self, results: Iterable[TActionReturn]) -> TFoldReturn: ...
+    def fold(self, results: List[TActionReturn]) -> TFoldReturn: ...
 
     ###
     # Built-in Instance Methods

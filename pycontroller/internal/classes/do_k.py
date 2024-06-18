@@ -1,20 +1,25 @@
 import ast
 from functools import cmp_to_key
+from heapq import nlargest, nsmallest
+from itertools import islice
 from typing import Any, Callable
 
-from pycontroller2.internal.controlled_method import MethodInvocation
-from pycontroller2.internal.exceptions import (
+from pycontroller.internal.exceptions import (
     InvalidControllerMethodError,
     InvalidReturnError,
 )
-from pycontroller2.internal.namespace import (
+from pycontroller.internal.method_invocation import MethodInvocation
+from pycontroller.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CLASS_ARG_NAME,
     FILTER_METHOD_NAME,
     FOLD_METHOD_NAME,
     GENERATED_CALL_METHOD_NAME,
+    K_ARG_NAME,
     PARTITION_ARG_NAME,
+    POST_CONTROLLER_METHOD_NAME,
+    PRE_CONTROLLER_METHOD_NAME,
     SORT_CMP_METHOD_NAME,
     SORT_KEY_METHOD_NAME,
 )
@@ -22,14 +27,14 @@ from pycontroller2.internal.namespace import (
 from ._base import BaseControllerImplementation
 
 
-class DoAllImplementation(BaseControllerImplementation):
+class DoKImplementation(BaseControllerImplementation):
     def __init__(self, cls, name, bases, attrs, stack_frame) -> None:
         super().__init__(cls, name, bases, attrs, stack_frame)
 
     def validate(self) -> None:
         super().validate()
         if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoAll controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
+            err = f'DoK controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
             err += f' You must define only one. Note that "{SORT_KEY_METHOD_NAME}" is more performant.'
             raise InvalidControllerMethodError(err)
 
@@ -76,13 +81,13 @@ class DoAllImplementation(BaseControllerImplementation):
         if self.has_pre_controller:
             pre_controller_call = MethodInvocation(
                 self.pre_controller
-            ).to_function_call()
+            ).to_function_call(name=PRE_CONTROLLER_METHOD_NAME)
             body.append(ast.Expr(value=pre_controller_call))
 
         if self.has_filter:
             if self.filter.num_call_parameters != 1:
                 filter_fn = MethodInvocation(self.filter).to_lambda(
-                    [self.filter.call_args[0]]
+                    [self.filter.call_args[0]], name=FILTER_METHOD_NAME
                 )
             else:
                 filter_fn = ast.Attribute(
@@ -99,7 +104,7 @@ class DoAllImplementation(BaseControllerImplementation):
         if self.has_preference_key:
             if self.sort_key.num_call_parameters != 1:
                 preference_fn = MethodInvocation(self.sort_key).to_lambda(
-                    [self.sort_key.call_args[0]]
+                    [self.sort_key.call_args[0]], name=SORT_KEY_METHOD_NAME
                 )
             else:
                 preference_fn = ast.Attribute(
@@ -108,23 +113,23 @@ class DoAllImplementation(BaseControllerImplementation):
                     ctx=ast.Load(),
                 )
 
-            sort_keywords = [ast.keyword(arg="key", value=preference_fn)]
             if self.cls.reverse_preference:
-                sort_keywords.append(
-                    ast.keyword(
-                        arg="reverse", value=ast.Constant(value=True, type="bool")
-                    )
-                )
+                sort_fn = ast.Name(id="nlargest", ctx=ast.Load())
+                additional_globals["nlargest"] = nlargest
+            else:
+                sort_fn = ast.Name(id="nsmallest", ctx=ast.Load())
+                additional_globals["nsmallest"] = nsmallest
+
             get_elements = ast.Call(
-                func=ast.Name(id="sorted", ctx=ast.Load()),
-                args=[get_elements],
-                keywords=sort_keywords,
+                func=sort_fn,
+                args=[ast.Name(id=K_ARG_NAME, ctx=ast.Load()), get_elements],
+                keywords=[ast.keyword(arg="key", value=preference_fn)],
             )
 
         if self.has_preference_cmp:
             if self.sort_cmp.num_call_parameters != 2:
                 preference_fn = MethodInvocation(self.sort_cmp).to_lambda(
-                    self.sort_cmp.call_args[:2]
+                    self.sort_cmp.call_args[:2], name=SORT_CMP_METHOD_NAME
                 )
             else:
                 preference_fn = ast.Attribute(
@@ -133,28 +138,42 @@ class DoAllImplementation(BaseControllerImplementation):
                     ctx=ast.Load(),
                 )
 
-            sort_keywords = [
-                ast.keyword(
-                    arg="key",
-                    value=ast.Call(
-                        func=ast.Name(id="cmp_to_key", ctx=ast.Load()),
-                        args=[preference_fn],
-                        keywords=[],
-                    ),
-                )
-            ]
             if self.cls.reverse_preference:
-                sort_keywords.append(
-                    ast.keyword(
-                        arg="reverse", value=ast.Constant(value=True, type="bool")
-                    )
-                )
+                sort_fn = ast.Name(id="nlargest", ctx=ast.Load())
+                additional_globals["nlargest"] = nlargest
+            else:
+                sort_fn = ast.Name(id="nsmallest", ctx=ast.Load())
+                additional_globals["nsmallest"] = nsmallest
+
             get_elements = ast.Call(
-                func=ast.Name(id="sorted", ctx=ast.Load()),
-                args=[get_elements],
-                keywords=sort_keywords,
+                func=sort_fn,
+                args=[ast.Name(id=K_ARG_NAME, ctx=ast.Load()), get_elements],
+                keywords=[
+                    ast.keyword(
+                        arg="key",
+                        value=ast.Call(
+                            func=ast.Name(id="cmp_to_key", ctx=ast.Load()),
+                            args=[preference_fn],
+                            keywords=[],
+                        ),
+                    )
+                ],
             )
             additional_globals["cmp_to_key"] = cmp_to_key
+
+        if not self.has_preference_key and not self.has_preference_cmp:
+            get_elements = ast.Call(
+                func=ast.Name(id="islice", ctx=ast.Load()),
+                args=[get_elements, ast.Name(id=K_ARG_NAME, ctx=ast.Load())],
+                keywords=[],
+            )
+            additional_globals["islice"] = islice
+            if not self.has_action:
+                get_elements = ast.Call(
+                    func=ast.Name(id="list", ctx=ast.Load()),
+                    args=[get_elements],
+                    keywords=[],
+                )
 
         if self.has_action:
             action_invoke = MethodInvocation(self.action)
@@ -164,7 +183,9 @@ class DoAllImplementation(BaseControllerImplementation):
                 # we should capture the results using map
                 if self.action.num_call_parameters != 1:
                     # action has additional parameters, use a lambda
-                    action_fn = action_invoke.to_lambda([action_args[0].id])
+                    action_fn = action_invoke.to_lambda(
+                        [action_args[0].id], name=ACTION_METHOD_NAME
+                    )
                 else:
                     # action only takes the required chosen parameter
                     action_fn = ast.Attribute(
@@ -199,7 +220,7 @@ class DoAllImplementation(BaseControllerImplementation):
                     body=[
                         ast.Expr(
                             value=action_invoke.to_function_call(
-                                action_args, action_keywords
+                                action_args, action_keywords, name=ACTION_METHOD_NAME
                             )
                         )
                     ],
@@ -222,7 +243,9 @@ class DoAllImplementation(BaseControllerImplementation):
 
             fold_assignment = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
-                value=fold_invoke.to_function_call(fold_args, fold_keywords),
+                value=fold_invoke.to_function_call(
+                    fold_args, fold_keywords, name=FOLD_METHOD_NAME
+                ),
             )
             body.append(fold_assignment)
 
@@ -237,7 +260,7 @@ class DoAllImplementation(BaseControllerImplementation):
         if self.has_post_controller:
             post_controller_call = MethodInvocation(
                 self.post_controller
-            ).to_function_call()
+            ).to_function_call(name=POST_CONTROLLER_METHOD_NAME)
             body.append(ast.Expr(value=post_controller_call))
 
         if not self.has_fold and (self.has_action and not self.action.returns_a_value):
@@ -251,7 +274,7 @@ class DoAllImplementation(BaseControllerImplementation):
 
         args, saved_defaults = self.get_call_args(
             use_class_arg=True,
-            use_k_arg=False,
+            use_k_arg=True,
             use_partition_arg=True,
         )
         additional_globals.update(saved_defaults)
