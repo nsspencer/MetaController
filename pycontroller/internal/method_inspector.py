@@ -64,6 +64,8 @@ class MethodInspector:
     def has_explicit_value_return(self) -> bool:
         if self.__has_explicit_value_return is None:
             self._parse_return_options()
+        if self.is_lambda:
+            return True  # lambdas always return a value
         return self.__has_explicit_value_return
 
     @property
