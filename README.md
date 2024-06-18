@@ -67,7 +67,7 @@ This wraps the *get_elements* ast and becomes the new *get_elements*
 
 * If optimizations == False: use lambda method with filter() builtin 
 
-#### Preference
+#### Sorting
 
 * If DoOne: Use min() or heapq.nsmallest(1), or max() or heapq.nlargest(1) if reversed
 * If DoK: Use heapq.nsmallest(k), or heapq.nlargest(k) if reversed

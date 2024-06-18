@@ -37,7 +37,7 @@ class DoImplementation(BaseControllerImplementation):
 
         if self.has_sort_cmp or self.has_sort_key:
             warnings.warn(
-                "Preference is not supported for Do controllers. It will be ignored."
+                "Sorting is not supported for Do controllers. It will be ignored."
             )
 
         if self.has_fold:
