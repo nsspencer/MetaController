@@ -13,7 +13,7 @@ class TestDoOneSmoke(unittest.TestCase):
             def __init__(self):
                 self.pre_controller_passed = False
                 self.filter_passed = False
-                self.preference_key_passed = False
+                self.sort_key_passed = False
                 self.action_passed = False
                 self.post_controller_passed = False
 
@@ -25,7 +25,7 @@ class TestDoOneSmoke(unittest.TestCase):
                 return True
 
             def sort_key(self, chosen):
-                self.preference_key_passed = True
+                self.sort_key_passed = True
                 return chosen
 
             def action(self, chosen, arg1: bool):
@@ -41,7 +41,7 @@ class TestDoOneSmoke(unittest.TestCase):
         self.assertTrue(result == 0)
         self.assertTrue(inst.pre_controller_passed)
         self.assertTrue(inst.filter_passed)
-        self.assertTrue(inst.preference_key_passed)
+        self.assertTrue(inst.sort_key_passed)
         self.assertTrue(inst.action_passed)
         self.assertTrue(inst.post_controller_passed)
 

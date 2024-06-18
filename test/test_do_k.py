@@ -13,7 +13,7 @@ class TestDoKSmoke(unittest.TestCase):
             def __init__(self):
                 self.pre_controller_passed = False
                 self.filter_passed = False
-                self.preference_key_passed = False
+                self.sort_key_passed = False
                 self.action_passed = False
                 self.fold_passed = False
                 self.post_controller_passed = False
@@ -26,7 +26,7 @@ class TestDoKSmoke(unittest.TestCase):
                 return True
 
             def sort_key(self, chosen):
-                self.preference_key_passed = True
+                self.sort_key_passed = True
                 return chosen
 
             def action(self, chosen, arg1: bool):
@@ -47,7 +47,7 @@ class TestDoKSmoke(unittest.TestCase):
         test_self.assertTrue(result == sum(sorted(elements)[:5]))
         test_self.assertTrue(inst.pre_controller_passed)
         test_self.assertTrue(inst.filter_passed)
-        test_self.assertTrue(inst.preference_key_passed)
+        test_self.assertTrue(inst.sort_key_passed)
         test_self.assertTrue(inst.action_passed)
         test_self.assertTrue(inst.fold_passed)
         test_self.assertTrue(inst.post_controller_passed)

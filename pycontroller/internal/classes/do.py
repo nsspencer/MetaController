@@ -23,8 +23,8 @@ class DoImplementation(BaseControllerImplementation):
             attrs,
             stack_frame,
             filter_enabled=False,
-            preference_key_enabled=False,
-            preference_cmp_enabled=False,
+            sort_key_enabled=False,
+            sort_cmp_enabled=False,
             fold_enabled=False,
         )
 
@@ -35,7 +35,7 @@ class DoImplementation(BaseControllerImplementation):
                 "Filter is not supported for Do controllers. It will be ignored."
             )
 
-        if self.has_preference_cmp or self.has_preference_key:
+        if self.has_sort_cmp or self.has_sort_key:
             warnings.warn(
                 "Preference is not supported for Do controllers. It will be ignored."
             )

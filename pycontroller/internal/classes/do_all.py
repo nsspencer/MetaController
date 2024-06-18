@@ -30,8 +30,8 @@ class DoAllImplementation(BaseControllerImplementation):
 
     def validate(self) -> None:
         super().validate()
-        if self.has_preference_key and self.has_preference_cmp:
-            err = f'DoAll controller "{self.name}" is invalid because both preference methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
+        if self.has_sort_key and self.has_sort_cmp:
+            err = f'DoAll controller "{self.name}" is invalid because both sort methods ("{SORT_KEY_METHOD_NAME}" and "{SORT_CMP_METHOD_NAME}") are defined.'
             err += f' You must define only one. Note that "{SORT_KEY_METHOD_NAME}" is more performant.'
             raise InvalidControllerMethodError(err)
 
@@ -41,13 +41,13 @@ class DoAllImplementation(BaseControllerImplementation):
                     f'"{FILTER_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
                 )
 
-        if self.has_preference_key:
+        if self.has_sort_key:
             if len(self.sort_key.call_args) < 1:
                 raise AttributeError(
                     f'"{SORT_KEY_METHOD_NAME}" should be defined with at least 1 non-class argument (chosen), but 0 were given.'
                 )
 
-        if self.has_preference_cmp:
+        if self.has_sort_cmp:
             if len(self.sort_cmp.call_args) < 2:
                 raise AttributeError(
                     f'"{SORT_CMP_METHOD_NAME}" should be defined with at least 2 non-class arguments (a, b), but {len(self.sort_cmp.call_args)} were given.'
@@ -98,20 +98,20 @@ class DoAllImplementation(BaseControllerImplementation):
                 keywords=[],
             )
 
-        if self.has_preference_key:
+        if self.has_sort_key:
             if self.sort_key.num_call_parameters != 1:
-                preference_fn = MethodInvocation(self.sort_key).to_lambda(
+                sort_fn = MethodInvocation(self.sort_key).to_lambda(
                     [self.sort_key.call_args[0]], name=SORT_KEY_METHOD_NAME
                 )
             else:
-                preference_fn = ast.Attribute(
+                sort_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
                     attr=SORT_KEY_METHOD_NAME,
                     ctx=ast.Load(),
                 )
 
-            sort_keywords = [ast.keyword(arg="key", value=preference_fn)]
-            if self.cls.reverse_preference:
+            sort_keywords = [ast.keyword(arg="key", value=sort_fn)]
+            if self.cls.reverse_sort:
                 sort_keywords.append(
                     ast.keyword(
                         arg="reverse", value=ast.Constant(value=True, type="bool")
@@ -123,13 +123,13 @@ class DoAllImplementation(BaseControllerImplementation):
                 keywords=sort_keywords,
             )
 
-        if self.has_preference_cmp:
+        if self.has_sort_cmp:
             if self.sort_cmp.num_call_parameters != 2:
-                preference_fn = MethodInvocation(self.sort_cmp).to_lambda(
+                sort_fn = MethodInvocation(self.sort_cmp).to_lambda(
                     self.sort_cmp.call_args[:2], name=SORT_CMP_METHOD_NAME
                 )
             else:
-                preference_fn = ast.Attribute(
+                sort_fn = ast.Attribute(
                     value=ast.Name(id=CLASS_ARG_NAME, ctx=ast.Load()),
                     attr=SORT_CMP_METHOD_NAME,
                     ctx=ast.Load(),
@@ -140,12 +140,12 @@ class DoAllImplementation(BaseControllerImplementation):
                     arg="key",
                     value=ast.Call(
                         func=ast.Name(id="cmp_to_key", ctx=ast.Load()),
-                        args=[preference_fn],
+                        args=[sort_fn],
                         keywords=[],
                     ),
                 )
             ]
-            if self.cls.reverse_preference:
+            if self.cls.reverse_sort:
                 sort_keywords.append(
                     ast.keyword(
                         arg="reverse", value=ast.Constant(value=True, type="bool")

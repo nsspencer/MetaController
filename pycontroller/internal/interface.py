@@ -96,7 +96,7 @@ class Do(Generic[TActionReturn], metaclass=MetaController):
 
 class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
     optimize: bool = False
-    reverse_preference: bool = False
+    reverse_sort: bool = False
 
     ###
     # Valid User Defined Methods:
@@ -147,7 +147,7 @@ class DoOne(Generic[TChosen, TActionReturn], metaclass=MetaController):
 
 class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = False
-    reverse_preference: bool = False
+    reverse_sort: bool = False
 
     ###
     # Valid User Defined Methods:
@@ -198,7 +198,7 @@ class DoK(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController
 
 class DoAll(Generic[TChosen, TActionReturn, TFoldReturn], metaclass=MetaController):
     optimize: bool = False
-    reverse_preference: bool = False
+    reverse_sort: bool = False
 
     ###
     # Valid User Defined Methods:

@@ -13,7 +13,7 @@ class TestDoAllSmoke(unittest.TestCase):
             def __init__(self):
                 self.pre_controller_passed = False
                 self.filter_passed = False
-                self.preference_key_passed = False
+                self.sort_key_passed = False
                 self.action_passed = False
                 self.fold_passed = False
                 self.post_controller_passed = False
@@ -26,11 +26,11 @@ class TestDoAllSmoke(unittest.TestCase):
                 return True
 
             # def sort_key(self, chosen):
-            #     self.preference_key_passed = True
+            #     self.sort_key_passed = True
             #     return chosen
 
             def sort_cmp(self, a, b, arg1) -> int:
-                self.preference_key_passed = arg1
+                self.sort_key_passed = arg1
                 return -1 if a < b else 1 if a > b else 0
 
             def action(self, chosen, arg1: bool):
@@ -51,7 +51,7 @@ class TestDoAllSmoke(unittest.TestCase):
         test_self.assertTrue(result == sum(elements))
         test_self.assertTrue(inst.pre_controller_passed)
         test_self.assertTrue(inst.filter_passed)
-        test_self.assertTrue(inst.preference_key_passed)
+        test_self.assertTrue(inst.sort_key_passed)
         test_self.assertTrue(inst.action_passed)
         test_self.assertTrue(inst.fold_passed)
         test_self.assertTrue(inst.post_controller_passed)

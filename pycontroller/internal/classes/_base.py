@@ -30,8 +30,8 @@ class BaseControllerImplementation(ABC):
         stack_frame,
         pre_controller_enabled: bool = True,
         filter_enabled: bool = True,
-        preference_key_enabled: bool = True,
-        preference_cmp_enabled: bool = True,
+        sort_key_enabled: bool = True,
+        sort_cmp_enabled: bool = True,
         action_enabled: bool = True,
         fold_enabled: bool = True,
         post_controller_enabled: bool = True,
@@ -55,15 +55,15 @@ class BaseControllerImplementation(ABC):
             else None
         )
 
-        self.__preference_key = (
+        self.__sort_key = (
             MethodInspector(self.attrs[SORT_KEY_METHOD_NAME])
-            if SORT_KEY_METHOD_NAME in self.attrs and preference_key_enabled
+            if SORT_KEY_METHOD_NAME in self.attrs and sort_key_enabled
             else None
         )
 
-        self.__preference_cmp = (
+        self.__sort_cmp = (
             MethodInspector(self.attrs[SORT_CMP_METHOD_NAME])
-            if SORT_CMP_METHOD_NAME in self.attrs and preference_cmp_enabled
+            if SORT_CMP_METHOD_NAME in self.attrs and sort_cmp_enabled
             else None
         )
 
@@ -129,20 +129,20 @@ class BaseControllerImplementation(ABC):
         return self.__filter
 
     @property
-    def has_preference_key(self) -> bool:
-        return self.__preference_key is not None
+    def has_sort_key(self) -> bool:
+        return self.__sort_key is not None
 
     @property
     def sort_key(self) -> MethodInspector | None:
-        return self.__preference_key
+        return self.__sort_key
 
     @property
-    def has_preference_cmp(self) -> bool:
-        return self.__preference_cmp is not None
+    def has_sort_cmp(self) -> bool:
+        return self.__sort_cmp is not None
 
     @property
     def sort_cmp(self) -> MethodInspector | None:
-        return self.__preference_cmp
+        return self.__sort_cmp
 
     @property
     def has_action(self) -> bool:
@@ -204,8 +204,8 @@ class BaseControllerImplementation(ABC):
         use_partition_arg: bool = True,
         required_pre_controller_args: int = 0,
         required_filter_args: int = 1,
-        required_preference_key_args: int = 1,
-        required_preference_cmp_args: int = 2,
+        required_sort_key_args: int = 1,
+        required_sort_cmp_args: int = 2,
         required_action_args: int = 1,
         requried_fold_args: int = 1,
         required_post_controller_args: int = 0,
@@ -277,21 +277,17 @@ class BaseControllerImplementation(ABC):
             arg_start_index += required_filter_args
             filter_args = self.filter.get_non_defaulted_args()[arg_start_index:]
 
-        preference_key_args = []
-        if self.has_preference_key:
+        sort_key_args = []
+        if self.has_sort_key:
             arg_start_index = 0 if self.sort_key.is_staticmethod else 1
-            arg_start_index += required_preference_key_args
-            preference_key_args = self.sort_key.get_non_defaulted_args()[
-                arg_start_index:
-            ]
+            arg_start_index += required_sort_key_args
+            sort_key_args = self.sort_key.get_non_defaulted_args()[arg_start_index:]
 
-        preference_cmp_args = []
-        if self.has_preference_cmp:
+        sort_cmp_args = []
+        if self.has_sort_cmp:
             arg_start_index = 0 if self.sort_cmp.is_staticmethod else 1
-            arg_start_index += required_preference_cmp_args
-            preference_cmp_args = self.sort_cmp.get_non_defaulted_args()[
-                arg_start_index:
-            ]
+            arg_start_index += required_sort_cmp_args
+            sort_cmp_args = self.sort_cmp.get_non_defaulted_args()[arg_start_index:]
 
         action_args = []
         if self.has_action:
@@ -316,8 +312,8 @@ class BaseControllerImplementation(ABC):
         max_args = max(
             len(pre_controller_args),
             len(filter_args),
-            len(preference_key_args),
-            len(preference_cmp_args),
+            len(sort_key_args),
+            len(sort_cmp_args),
             len(action_args),
             len(fold_args),
             len(post_controller_args),
@@ -338,19 +334,19 @@ class BaseControllerImplementation(ABC):
                     msg += shared_msg
                     raise ArgumentError(msg)
 
-            if len(preference_key_args) > index:
+            if len(sort_key_args) > index:
                 if current_arg is None:
-                    current_arg = preference_key_args[index]
-                elif current_arg != preference_key_args[index]:
-                    msg = f'{SORT_KEY_METHOD_NAME} argument {index} "{preference_key_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
+                    current_arg = sort_key_args[index]
+                elif current_arg != sort_key_args[index]:
+                    msg = f'{SORT_KEY_METHOD_NAME} argument {index} "{sort_key_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
                     msg += shared_msg
                     raise ArgumentError(msg)
 
-            if len(preference_cmp_args) > index:
+            if len(sort_cmp_args) > index:
                 if current_arg is None:
-                    current_arg = preference_cmp_args[index]
-                elif current_arg != preference_cmp_args[index]:
-                    msg = f'{SORT_CMP_METHOD_NAME} argument {index} "{preference_cmp_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
+                    current_arg = sort_cmp_args[index]
+                elif current_arg != sort_cmp_args[index]:
+                    msg = f'{SORT_CMP_METHOD_NAME} argument {index} "{sort_cmp_args[index]}" is positionally shared with "{current_arg}"; choose one name for this argument. '
                     msg += shared_msg
                     raise ArgumentError(msg)
 
@@ -450,7 +446,7 @@ class BaseControllerImplementation(ABC):
                 self.filter.get_keyword_only_args(), kwonlyargs, kw_defaults
             )
 
-        if self.has_preference_key:
+        if self.has_sort_key:
             add_non_conflicting_parameters(
                 self.sort_key.get_defaulted_args(), args, defaults
             )
@@ -460,7 +456,7 @@ class BaseControllerImplementation(ABC):
                 kw_defaults,
             )
 
-        if self.has_preference_cmp:
+        if self.has_sort_cmp:
             add_non_conflicting_parameters(
                 self.sort_cmp.get_defaulted_args(), args, defaults
             )
@@ -509,7 +505,7 @@ class BaseControllerImplementation(ABC):
                     The argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
-        if self.has_preference_key:
+        if self.has_sort_key:
             if arg_unpack_name is None:
                 arg_unpack_name = self.sort_key.varargs
             elif (
@@ -523,7 +519,7 @@ class BaseControllerImplementation(ABC):
                     The argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
-        if self.has_preference_cmp:
+        if self.has_sort_cmp:
             if arg_unpack_name is None:
                 arg_unpack_name = self.sort_cmp.varargs
             elif (
@@ -592,7 +588,7 @@ class BaseControllerImplementation(ABC):
                     The keyword argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
-        if self.has_preference_key:
+        if self.has_sort_key:
             if kwarg_name is None:
                 kwarg_name = self.sort_key.varkw
             elif self.sort_key.has_kwarg_unpack and self.sort_key.varkw != kwarg_name:
@@ -603,7 +599,7 @@ class BaseControllerImplementation(ABC):
                     The keyword argument unpack variable must be the same name across all controlled methods that use it.'
                     )
                 )
-        if self.has_preference_cmp:
+        if self.has_sort_cmp:
             if kwarg_name is None:
                 kwarg_name = self.sort_cmp.varkw
             elif self.sort_cmp.has_kwarg_unpack and self.sort_cmp.varkw != kwarg_name:
