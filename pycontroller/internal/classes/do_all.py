@@ -194,6 +194,7 @@ class DoAllImplementation(BaseControllerImplementation):
                     ],
                     value=action_call,
                 )
+                body.append(action)
 
             else:
                 # no need to capture the result from the action, so use a basic for loop
@@ -209,8 +210,7 @@ class DoAllImplementation(BaseControllerImplementation):
                     ],
                     orelse=[],
                 )
-
-            body.append(action)
+                body.append(action)
 
         if self.has_fold:
             fold_invoke = MethodInvocation(self.fold)
@@ -234,6 +234,13 @@ class DoAllImplementation(BaseControllerImplementation):
 
         else:
             # does not have an action, return whatever is get_elements
+            if not self.has_sort_cmp and not self.has_sort_key:
+                # we need to convert the filter object to a list before we return
+                get_elements = ast.Call(
+                    func=ast.Name(id="list", ctx=ast.Load()),
+                    args=[get_elements],
+                    keywords=[],
+                )
             get_elements_result = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
                 value=get_elements,

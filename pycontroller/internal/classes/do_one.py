@@ -193,28 +193,37 @@ class DoOneImplementation(BaseControllerImplementation):
                     action_args, action_keywords, name=ACTION_METHOD_NAME
                 ),
             )
-
-            # check if there is an element that we should act on
-            if_check = ast.If(
-                test=ast.Compare(
-                    left=ast.Call(
-                        func=ast.Name(id="len", ctx=ast.Load()),
-                        args=[ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load())],
-                        keywords=[],
-                    ),
-                    ops=[ast.NotEq()],
-                    comparators=[ast.Constant(value=0, kind="int")],
-                ),
-                body=[action_result],
-                orelse=[],
-            )
-
-            result = ast.Assign(
+        else:
+            action_result = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
-                value=ast.Constant(value=None, kind=None),
+                value=ast.Subscript(
+                    value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load()),
+                    slice=ast.Num(n=0),
+                    ctx=ast.Load(),
+                ),
             )
-            body.append(result)
-            body.append(if_check)
+
+        # check if there is an element that we should act on
+        if_check = ast.If(
+            test=ast.Compare(
+                left=ast.Call(
+                    func=ast.Name(id="len", ctx=ast.Load()),
+                    args=[ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load())],
+                    keywords=[],
+                ),
+                ops=[ast.NotEq()],
+                comparators=[ast.Constant(value=0, kind="int")],
+            ),
+            body=[action_result],
+            orelse=[],
+        )
+
+        result = ast.Assign(
+            targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
+            value=ast.Constant(value=None, kind=None),
+        )
+        body.append(result)
+        body.append(if_check)
 
         if self.has_post_controller:
             post_controller_call = MethodInvocation(
@@ -229,7 +238,11 @@ class DoOneImplementation(BaseControllerImplementation):
                 )
             )
         else:
-            body.append(ast.Return(value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load())))
+            body.append(
+                ast.Return(
+                    value=ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Load())
+                )
+            )
 
         args, saved_defaults = self.get_call_args(
             use_class_arg=True,

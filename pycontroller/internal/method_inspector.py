@@ -23,11 +23,9 @@ class MethodInspector:
         if hasattr(fn, "__wrapped__"):
             self.spec = inspect.getfullargspec(fn.__wrapped__)
             self._signature_dict = self.signature_to_dict(fn.__wrapped__)
-            self.__is_decorated = True
         else:
             self.spec = inspect.getfullargspec(fn)
             self._signature_dict = self.signature_to_dict(fn)
-            self.__is_decorated = False
 
         # set the placeholder values for the return options
         self.__has_explicit_void_return = None
@@ -45,10 +43,6 @@ class MethodInspector:
     @property
     def is_staticmethod(self) -> bool:
         return self.__is_staticmethod
-
-    @property
-    def is_decorated(self) -> bool:
-        return self.__is_decorated
 
     @property
     def is_lambda(self) -> bool:

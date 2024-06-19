@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from pycontroller.internal.exceptions import ArgumentError
+from pycontroller.internal.exceptions import ArgumentError, InvalidControllerMethodError
 from pycontroller.internal.method_inspector import MethodInspector
 from pycontroller.internal.namespace import (
     ACTION_METHOD_NAME,
@@ -95,7 +95,19 @@ class BaseControllerImplementation(ABC):
         are all valid before any compilation is done. This method should raise specific
         exceptions if a controller is deemed invalid.
         """
-        ...
+        # assert there is some sort of controlled method in the controller
+        if (
+            not self.has_pre_controller
+            and not self.has_filter
+            and not self.has_sort_key
+            and not self.has_sort_cmp
+            and not self.has_action
+            and not self.has_fold
+            and not self.has_post_controller
+        ):
+            raise InvalidControllerMethodError(
+                f'"{self.name}" must have at least one controlled method to be valid.'
+            )
 
     @abstractmethod
     def generate_call_method(self) -> Callable[..., Any]:
