@@ -11,6 +11,11 @@ from pycontroller import Do, DoAll, DoK, DoOne
 from pycontroller.internal.exceptions import InvalidControllerMethodError
 
 
+class ArgWrapper:
+    def __init__(self, value):
+        self.value = value
+
+
 class TestPreController(unittest.TestCase):
     def test_do(self):
         class T(Do):
@@ -55,6 +60,51 @@ class TestPreController(unittest.TestCase):
         inst = T()
         inst([])
         self.assertTrue(inst.passed)
+
+    # static method tests
+    def test_do_static(self):
+        class T(Do):
+            @staticmethod
+            def pre_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(arg)
+        self.assertTrue(arg.value)
+
+    def test_do_one_static(self):
+        class T(DoOne):
+            @staticmethod
+            def pre_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def pre_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(0, [], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def pre_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
 
 
 class TestPostController(unittest.TestCase):
@@ -101,6 +151,51 @@ class TestPostController(unittest.TestCase):
         inst = T()
         inst([])
         self.assertTrue(inst.passed)
+
+    # static method tests
+    def test_do_static(self):
+        class T(Do):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(arg)
+        self.assertTrue(arg.value)
+
+    def test_do_one_static(self):
+        class T(DoOne):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(0, [], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
 
 
 class TestFilter(unittest.TestCase):
