@@ -1,3 +1,6 @@
+import random
+
+random.seed(0)
 import os
 import sys
 
@@ -158,6 +161,308 @@ class TestFilter(unittest.TestCase):
 
         inst = T()
         self.assertTrue(inst(range(10)) == [0, 2, 4, 6, 8])
+
+
+class TestSortKey(unittest.TestCase):
+
+    def setUp(self):
+        self.elements = [random.randint(0, 1000) for _ in range(10)]
+
+    def test_do(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                def sort_key(self, chosen) -> int:
+                    return chosen
+
+    def test_do_one(self):
+        class T(DoOne):
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == min(self.elements))
+
+    def test_do_k(self):
+        class T(DoK):
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements) == sorted(self.elements, key=lambda x: x)[:3]
+        )
+
+    def test_do_all(self):
+        class T(DoAll):
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == sorted(self.elements, key=lambda x: x))
+
+    def test_do_one_static(self):
+        class T(DoOne):
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == min(self.elements))
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements) == sorted(self.elements, key=lambda x: x)[:3]
+        )
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == sorted(self.elements, key=lambda x: x))
+
+    # reverse tests
+    def test_do_reverse(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                reverse_sort = True
+
+                def sort_key(self, chosen) -> int:
+                    return chosen
+
+    def test_do_one_reverse(self):
+        class T(DoOne):
+            reverse_sort = True
+
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == max(self.elements))
+
+    def test_do_k_reverse(self):
+        class T(DoK):
+            reverse_sort = True
+
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements)
+            == sorted(self.elements, key=lambda x: x, reverse=True)[:3]
+        )
+
+    def test_do_all_reverse(self):
+        class T(DoAll):
+            reverse_sort = True
+
+            def sort_key(self, chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(self.elements) == sorted(self.elements, key=lambda x: x, reverse=True)
+        )
+
+    def test_do_one_static_reverse(self):
+        class T(DoOne):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == max(self.elements))
+
+    def test_do_k_static_reverse(self):
+        class T(DoK):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements)
+            == sorted(self.elements, key=lambda x: x, reverse=True)[:3]
+        )
+
+    def test_do_all_static_reverse(self):
+        class T(DoAll):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_key(chosen) -> int:
+                return chosen
+
+        inst = T()
+        self.assertTrue(
+            inst(self.elements) == sorted(self.elements, key=lambda x: x, reverse=True)
+        )
+
+
+class TestSortCmp(unittest.TestCase):
+
+    def setUp(self):
+        self.elements = [random.randint(0, 1000) for _ in range(10)]
+
+    def test_do(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                def sort_cmp(self, a, b) -> int:
+                    return -1 if a < b else 1 if a > b else 0
+
+    def test_do_one(self):
+        class T(DoOne):
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == min(self.elements))
+
+    def test_do_k(self):
+        class T(DoK):
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements) == sorted(self.elements, key=lambda x: x)[:3]
+        )
+
+    def test_do_all(self):
+        class T(DoAll):
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == sorted(self.elements, key=lambda x: x))
+
+    def test_do_one_static(self):
+        class T(DoOne):
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == min(self.elements))
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements) == sorted(self.elements, key=lambda x: x)[:3]
+        )
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == sorted(self.elements, key=lambda x: x))
+
+    # reverse tests
+    def test_do_reverse(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                reverse_sort = True
+
+                def sort_cmp(self, a, b) -> int:
+                    return -1 if a < b else 1 if a > b else 0
+
+    def test_do_one_reverse(self):
+        class T(DoOne):
+            reverse_sort = True
+
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == max(self.elements))
+
+    def test_do_k_reverse(self):
+        class T(DoK):
+            reverse_sort = True
+
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements)
+            == sorted(self.elements, key=lambda x: x, reverse=True)[:3]
+        )
+
+    def test_do_all_reverse(self):
+        class T(DoAll):
+            reverse_sort = True
+
+            def sort_cmp(self, a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(self.elements) == sorted(self.elements, key=lambda x: x, reverse=True)
+        )
+
+    def test_do_one_static_reverse(self):
+        class T(DoOne):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(inst(self.elements) == max(self.elements))
+
+    def test_do_k_static_reverse(self):
+        class T(DoK):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(3, self.elements)
+            == sorted(self.elements, key=lambda x: x, reverse=True)[:3]
+        )
+
+    def test_do_all_static_reverse(self):
+        class T(DoAll):
+            reverse_sort = True
+
+            @staticmethod
+            def sort_cmp(a, b) -> int:
+                return -1 if a < b else 1 if a > b else 0
+
+        inst = T()
+        self.assertTrue(
+            inst(self.elements) == sorted(self.elements, key=lambda x: x, reverse=True)
+        )
 
 
 if __name__ == "__main__":
