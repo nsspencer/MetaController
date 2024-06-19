@@ -107,97 +107,6 @@ class TestPreController(unittest.TestCase):
         self.assertTrue(arg.value)
 
 
-class TestPostController(unittest.TestCase):
-    def test_do(self):
-        class T(Do):
-            passed = False
-
-            def post_controller(self) -> None:
-                self.passed = True
-
-        inst = T()
-        inst()
-        self.assertTrue(inst.passed)
-
-    def test_do_one(self):
-        class T(DoOne):
-            passed = False
-
-            def post_controller(self) -> None:
-                self.passed = True
-
-        inst = T()
-        inst([])
-        self.assertTrue(inst.passed)
-
-    def test_do_k(self):
-        class T(DoK):
-            passed = False
-
-            def post_controller(self) -> None:
-                self.passed = True
-
-        inst = T()
-        inst(0, [])
-        self.assertTrue(inst.passed)
-
-    def test_do_all(self):
-        class T(DoAll):
-            passed = False
-
-            def post_controller(self) -> None:
-                self.passed = True
-
-        inst = T()
-        inst([])
-        self.assertTrue(inst.passed)
-
-    # static method tests
-    def test_do_static(self):
-        class T(Do):
-            @staticmethod
-            def post_controller(arg1) -> None:
-                arg1.value = True
-
-        inst = T()
-        arg = ArgWrapper(False)
-        inst(arg)
-        self.assertTrue(arg.value)
-
-    def test_do_one_static(self):
-        class T(DoOne):
-            @staticmethod
-            def post_controller(arg1) -> None:
-                arg1.value = True
-
-        inst = T()
-        arg = ArgWrapper(False)
-        inst([], arg)
-        self.assertTrue(arg.value)
-
-    def test_do_k_static(self):
-        class T(DoK):
-            @staticmethod
-            def post_controller(arg1) -> None:
-                arg1.value = True
-
-        inst = T()
-        arg = ArgWrapper(False)
-        inst(0, [], arg)
-        self.assertTrue(arg.value)
-
-    def test_do_all_static(self):
-        class T(DoAll):
-            @staticmethod
-            def post_controller(arg1) -> None:
-                arg1.value = True
-
-        inst = T()
-        arg = ArgWrapper(False)
-        inst([], arg)
-        self.assertTrue(arg.value)
-
-
 class TestFilter(unittest.TestCase):
     def test_do(self):
         with self.assertRaises(InvalidControllerMethodError):
@@ -558,6 +467,103 @@ class TestSortCmp(unittest.TestCase):
         self.assertTrue(
             inst(self.elements) == sorted(self.elements, key=lambda x: x, reverse=True)
         )
+
+
+class TestAction(unittest.TestCase): ...
+
+
+class TestFold(unittest.TestCase): ...
+
+
+class TestPostController(unittest.TestCase):
+    def test_do(self):
+        class T(Do):
+            passed = False
+
+            def post_controller(self) -> None:
+                self.passed = True
+
+        inst = T()
+        inst()
+        self.assertTrue(inst.passed)
+
+    def test_do_one(self):
+        class T(DoOne):
+            passed = False
+
+            def post_controller(self) -> None:
+                self.passed = True
+
+        inst = T()
+        inst([])
+        self.assertTrue(inst.passed)
+
+    def test_do_k(self):
+        class T(DoK):
+            passed = False
+
+            def post_controller(self) -> None:
+                self.passed = True
+
+        inst = T()
+        inst(0, [])
+        self.assertTrue(inst.passed)
+
+    def test_do_all(self):
+        class T(DoAll):
+            passed = False
+
+            def post_controller(self) -> None:
+                self.passed = True
+
+        inst = T()
+        inst([])
+        self.assertTrue(inst.passed)
+
+    # static method tests
+    def test_do_static(self):
+        class T(Do):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(arg)
+        self.assertTrue(arg.value)
+
+    def test_do_one_static(self):
+        class T(DoOne):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst(0, [], arg)
+        self.assertTrue(arg.value)
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def post_controller(arg1) -> None:
+                arg1.value = True
+
+        inst = T()
+        arg = ArgWrapper(False)
+        inst([], arg)
+        self.assertTrue(arg.value)
 
 
 if __name__ == "__main__":
