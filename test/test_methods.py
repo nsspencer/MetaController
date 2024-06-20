@@ -590,6 +590,132 @@ class TestAction(unittest.TestCase):
         self.assertTrue(self.count == len(self.elements))
         self.assertTrue(result == self.elements)
 
+    # static tests
+    def test_do_no_return_static(self):
+        self.passed = False
+
+        class T(Do):
+            @staticmethod
+            def action():
+                self.passed = True
+
+        inst = T()
+        inst()
+        self.assertTrue(self.passed)
+
+    def test_do_one_no_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoOne):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+
+        inst = T()
+        inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 1)
+
+    def test_do_k_no_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoK):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+
+        k = 5
+        inst = T()
+        inst(k, self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 5)
+
+    def test_do_all_no_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoAll):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+
+        inst = T()
+        inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == len(self.elements))
+
+    # with return
+    def test_do_return_static(self):
+        self.passed = False
+
+        class T(Do):
+            @staticmethod
+            def action():
+                self.passed = True
+                return True
+
+        inst = T()
+        result = inst()
+        self.assertTrue(self.passed)
+        self.assertTrue(result)
+
+    def test_do_one_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoOne):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        inst = T()
+        result = inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 1)
+        self.assertTrue(result == self.elements[0])
+
+    def test_do_k_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoK):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        k = 5
+        inst = T()
+        result = inst(k, self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == k)
+        self.assertTrue(result == self.elements[:k])
+
+    def test_do_all_return_static(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoAll):
+            @staticmethod
+            def action(chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        inst = T()
+        result = inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == len(self.elements))
+        self.assertTrue(result == self.elements)
+
 
 class TestFold(unittest.TestCase): ...
 
