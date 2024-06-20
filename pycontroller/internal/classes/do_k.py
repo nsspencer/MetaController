@@ -249,7 +249,7 @@ class DoKImplementation(BaseControllerImplementation):
             )
             body.append(fold_assignment)
 
-        else:
+        elif not self.has_action:
             # does not have an action, return whatever is get_elements
             get_elements_result = ast.Assign(
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],

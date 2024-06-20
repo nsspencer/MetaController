@@ -469,7 +469,126 @@ class TestSortCmp(unittest.TestCase):
         )
 
 
-class TestAction(unittest.TestCase): ...
+class TestAction(unittest.TestCase):
+    def setUp(self):
+        self.elements = [random.randint(0, 1000) for _ in range(10)]
+
+    def test_do_no_return(self):
+        self.passed = False
+
+        class T(Do):
+            def action(do_self):
+                self.passed = True
+
+        inst = T()
+        inst()
+        self.assertTrue(self.passed)
+
+    def test_do_one_no_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoOne):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+
+        inst = T()
+        inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 1)
+
+    def test_do_k_no_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoK):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+
+        k = 5
+        inst = T()
+        inst(k, self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 5)
+
+    def test_do_all_no_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoAll):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+
+        inst = T()
+        inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == len(self.elements))
+
+    # with return
+    def test_do_return(self):
+        self.passed = False
+
+        class T(Do):
+            def action(do_self):
+                self.passed = True
+                return True
+
+        inst = T()
+        result = inst()
+        self.assertTrue(self.passed)
+        self.assertTrue(result)
+
+    def test_do_one_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoOne):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        inst = T()
+        result = inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == 1)
+        self.assertTrue(result == self.elements[0])
+
+    def test_do_k_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoK):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        k = 5
+        inst = T()
+        result = inst(k, self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == k)
+        self.assertTrue(result == self.elements[:k])
+
+    def test_do_all_return(self):
+        self.passed = False
+        self.count = 0
+
+        class T(DoAll):
+            def action(do_self, chosen):
+                self.passed = True
+                self.count += 1
+                return chosen
+
+        inst = T()
+        result = inst(self.elements)
+        self.assertTrue(self.passed)
+        self.assertTrue(self.count == len(self.elements))
+        self.assertTrue(result == self.elements)
 
 
 class TestFold(unittest.TestCase): ...
