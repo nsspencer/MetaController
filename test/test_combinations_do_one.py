@@ -14,7 +14,6 @@ from pycontroller import DoOne
 class TestDoOneMethodCombinations(unittest.TestCase):
     def setUp(test_self):
         test_self.elements = [random.randint(0, 1000) for _ in range(10)]
-        test_self.k = 10
 
     def test_filter_sort_cmp(test_self):
         class T(DoOne):
