@@ -5,7 +5,7 @@ setup(
     version="0.1.1",
     author="Nathan Spencer",
     author_email="nathanss1997@gmail.com",
-    description="A Python library for modeling dynamic systems.",
+    description="A Python library for decoupling logic, modeling dynamic systems, and writing more declarative software.",
     long_description_content_type="text/markdown",
     url="https://github.com/nsspencer/ControllerPy",
     packages=find_packages(exclude=["test"]),
