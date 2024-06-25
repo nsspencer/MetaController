@@ -1,4 +1,5 @@
 import random
+from typing import Any, List
 
 random.seed(0)
 import os
@@ -717,7 +718,79 @@ class TestAction(unittest.TestCase):
         self.assertTrue(result == self.elements)
 
 
-class TestFold(unittest.TestCase): ...
+class TestFold(unittest.TestCase):
+    def test_do(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                def fold(self, results):
+                    return 0
+
+    def test_do_one(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(DoOne):
+                def fold(self, results):
+                    return 0
+
+    def test_do_k(self):
+        class T(DoK):
+            def fold(self, results: List):
+                return sum(results)
+
+        inst = T()
+        elements = [random.randint(0, 1000) for _ in range(10)]
+        result = inst(5, elements)
+        self.assertTrue(sum(elements[:5]) == result)
+
+    def test_do_all(self):
+        class T(DoAll):
+            def fold(self, results: List):
+                return sum(results)
+
+        inst = T()
+        elements = [random.randint(0, 1000) for _ in range(10)]
+        result = inst(elements)
+        self.assertTrue(sum(elements) == result)
+
+    # staticmethods
+    def test_do_static(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(Do):
+                @staticmethod
+                def fold(results):
+                    return 0
+
+    def test_do_one_static(self):
+        with self.assertRaises(InvalidControllerMethodError):
+
+            class T(DoOne):
+                @staticmethod
+                def fold(results):
+                    return 0
+
+    def test_do_k_static(self):
+        class T(DoK):
+            @staticmethod
+            def fold(results: List):
+                return sum(results)
+
+        inst = T()
+        elements = [random.randint(0, 1000) for _ in range(10)]
+        result = inst(5, elements)
+        self.assertTrue(sum(elements[:5]) == result)
+
+    def test_do_all_static(self):
+        class T(DoAll):
+            @staticmethod
+            def fold(results: List):
+                return sum(results)
+
+        inst = T()
+        elements = [random.randint(0, 1000) for _ in range(10)]
+        result = inst(elements)
+        self.assertTrue(sum(elements) == result)
 
 
 class TestPostController(unittest.TestCase):

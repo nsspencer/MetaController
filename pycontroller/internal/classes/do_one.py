@@ -27,7 +27,7 @@ from ._base import BaseControllerImplementation
 
 class DoOneImplementation(BaseControllerImplementation):
     def __init__(self, cls, name, bases, attrs, stack_frame) -> None:
-        super().__init__(cls, name, bases, attrs, stack_frame)
+        super().__init__(cls, name, bases, attrs, stack_frame, fold_enabled=False)
 
     def validate(self) -> None:
         super().validate()

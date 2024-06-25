@@ -232,7 +232,7 @@ class DoAllImplementation(BaseControllerImplementation):
             )
             body.append(fold_assignment)
 
-        else:
+        elif not self.has_action:
             # does not have an action, return whatever is get_elements
             if not self.has_sort_cmp and not self.has_sort_key:
                 # we need to convert the filter object to a list before we return
