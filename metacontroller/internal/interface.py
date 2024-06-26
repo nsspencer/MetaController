@@ -9,17 +9,14 @@ from .classes.do_one import DoOneImplementation
 TChosen = TypeVar("TChosen")
 TActionReturn = TypeVar("TActionReturn")
 TFoldReturn = TypeVar("TFoldReturn")
+TSupportsRichComparison = TypeVar(
+    "TSupportsRichComparison", bound="SupportsRichComparison"
+)
 
 
-class SupportsDunderLT(Protocol[TChosen]):
-    def __lt__(self, other: TChosen, /, *args: Any, **kwargs: Any) -> bool: ...
-
-
-class SupportsDunderGT(Protocol[TChosen]):
-    def __gt__(self, other: TChosen, /, *args: Any, **kwargs: Any) -> bool: ...
-
-
-SupportsRichComparison = SupportsDunderLT | SupportsDunderGT
+class SupportsRichComparison(Protocol):
+    def __lt__(self, other: TSupportsRichComparison) -> bool: ...
+    def __gt__(self, other: TSupportsRichComparison) -> bool: ...
 
 
 class MetaController(_ProtocolMeta):
