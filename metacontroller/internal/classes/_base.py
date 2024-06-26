@@ -132,7 +132,7 @@ class BaseControllerImplementation(ABC):
         return self.__pre_controller is not None
 
     @property
-    def pre_controller(self) -> MethodInspector | None:
+    def pre_controller(self) -> Union[MethodInspector, None]:
         return self.__pre_controller
 
     @property
@@ -140,7 +140,7 @@ class BaseControllerImplementation(ABC):
         return self.__filter is not None
 
     @property
-    def filter(self) -> MethodInspector | None:
+    def filter(self) -> Union[MethodInspector, None]:
         return self.__filter
 
     @property
@@ -148,7 +148,7 @@ class BaseControllerImplementation(ABC):
         return self.__sort_key is not None
 
     @property
-    def sort_key(self) -> MethodInspector | None:
+    def sort_key(self) -> Union[MethodInspector, None]:
         return self.__sort_key
 
     @property
@@ -156,7 +156,7 @@ class BaseControllerImplementation(ABC):
         return self.__sort_cmp is not None
 
     @property
-    def sort_cmp(self) -> MethodInspector | None:
+    def sort_cmp(self) -> Union[MethodInspector, None]:
         return self.__sort_cmp
 
     @property
@@ -164,7 +164,7 @@ class BaseControllerImplementation(ABC):
         return self.__action is not None
 
     @property
-    def action(self) -> MethodInspector | None:
+    def action(self) -> Union[MethodInspector, None]:
         return self.__action
 
     @property
@@ -172,7 +172,7 @@ class BaseControllerImplementation(ABC):
         return self.__fold is not None
 
     @property
-    def fold(self) -> MethodInspector | None:
+    def fold(self) -> Union[MethodInspector, None]:
         return self.__fold
 
     @property
@@ -180,7 +180,7 @@ class BaseControllerImplementation(ABC):
         return self.__post_controller is not None
 
     @property
-    def post_controller(self) -> MethodInspector | None:
+    def post_controller(self) -> Union[MethodInspector, None]:
         return self.__post_controller
 
     ####
