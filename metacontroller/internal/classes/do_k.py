@@ -4,12 +4,12 @@ from heapq import nlargest, nsmallest
 from itertools import islice
 from typing import Any, Callable
 
-from pycontroller.internal.exceptions import (
+from metacontroller.internal.exceptions import (
     InvalidControllerMethodError,
     InvalidReturnError,
 )
-from pycontroller.internal.method_invocation import MethodInvocation
-from pycontroller.internal.namespace import (
+from metacontroller.internal.method_invocation import MethodInvocation
+from metacontroller.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CLASS_ARG_NAME,

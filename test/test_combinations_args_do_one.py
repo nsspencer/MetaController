@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from pycontroller import DoOne
+from metacontroller import DoOne
 
 
 class ArgCheck:

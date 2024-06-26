@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from pycontroller import DoK
+from metacontroller import DoK
 
 
 class TestDoK0MethodCombinations(unittest.TestCase):
@@ -1409,7 +1409,6 @@ class TestDoKAllMethodCombinations(unittest.TestCase):
             sorted([i + 1 for i in test_self.elements if i % 2 == 0])[: test_self.k]
         )
         test_self.assertTrue(result == expected_results)
-
 
 
 if __name__ == "__main__":

@@ -8,8 +8,8 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from pycontroller import Do, DoAll, DoK, DoOne
-from pycontroller.internal.exceptions import InvalidControllerMethodError
+from metacontroller import Do, DoAll, DoK, DoOne
+from metacontroller.internal.exceptions import InvalidControllerMethodError
 
 
 class ArgWrapper:
