@@ -1,15 +1,5 @@
 import inspect
-from typing import (
-    Any,
-    Generic,
-    Iterable,
-    List,
-    Protocol,
-    TypeAlias,
-    TypeVar,
-    Union,
-    _ProtocolMeta,
-)
+from typing import Any, Generic, Iterable, List, Protocol, TypeVar, Union, _ProtocolMeta
 
 from .classes.do import DoImplementation
 from .classes.do_all import DoAllImplementation
@@ -29,7 +19,7 @@ class SupportsDunderGT(Protocol[TChosen]):
     def __gt__(self, other: TChosen, /, *args: Any, **kwargs: Any) -> bool: ...
 
 
-SupportsRichComparison: TypeAlias = SupportsDunderLT | SupportsDunderGT
+SupportsRichComparison = SupportsDunderLT | SupportsDunderGT
 
 
 class MetaController(_ProtocolMeta):
