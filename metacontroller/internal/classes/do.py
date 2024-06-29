@@ -91,5 +91,4 @@ class DoImplementation(BaseControllerImplementation):
         )
 
         module = ast.fix_missing_locations(ast.Module(body=[call_fn], type_ignores=[]))
-        ast.unparse(module)
         return self.compile_call_method(module, saved_defaults)

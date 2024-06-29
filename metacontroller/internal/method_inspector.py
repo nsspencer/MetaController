@@ -7,17 +7,30 @@ from typing import Any, Callable, List, Tuple
 
 class MethodInspector:
     def __init__(self, fn: Callable) -> None:
+        static_override = False
         if not callable(fn):
+            abort = True
             try:
-                name = fn.__name__
+                if callable(fn.__func__):
+                    abort = False
+                    fn = fn.__func__
+                    static_override = True
             except BaseException:
-                name = "UNKNOWN"
-            raise ValueError(
-                f'MethodInspector expected a callable object, but "{name}" is not.'
-            )
+                pass
+
+            if abort:
+                try:
+                    name = fn.__name__
+                except AttributeError:
+                    name = fn.__func__.__name__
+                except BaseException:
+                    name = "UNKNOWN"
+                raise ValueError(
+                    f'MethodInspector expected a callable object, but "{name}" is not.'
+                )
 
         self.fn = fn
-        self.__is_staticmethod = isinstance(fn, staticmethod)
+        self.__is_staticmethod = isinstance(fn, staticmethod) or static_override
         self.__is_lambda = inspect.isfunction(fn) and fn.__name__ == "<lambda>"
 
         if hasattr(fn, "__wrapped__"):
