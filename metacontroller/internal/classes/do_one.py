@@ -183,7 +183,7 @@ class DoOneImplementation(BaseControllerImplementation):
                 0,
                 ast.Subscript(
                     value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load()),
-                    slice=ast.Num(n=0),
+                    slice=ast.Constant(value=0),
                     ctx=ast.Load(),
                 ),
             )
@@ -198,7 +198,7 @@ class DoOneImplementation(BaseControllerImplementation):
                 targets=[ast.Name(id=ACTION_RESULT_ASSIGNMENT_NAME, ctx=ast.Store())],
                 value=ast.Subscript(
                     value=ast.Name(id=CHOSEN_ARG_NAME, ctx=ast.Load()),
-                    slice=ast.Num(n=0),
+                    slice=ast.Constant(value=0),
                     ctx=ast.Load(),
                 ),
             )
