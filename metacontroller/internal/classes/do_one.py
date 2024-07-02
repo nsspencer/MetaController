@@ -5,9 +5,9 @@ from heapq import nlargest, nsmallest
 from itertools import islice
 from typing import Any, Callable
 
-from metacontroller.internal.exceptions import InvalidControllerMethodError
-from metacontroller.internal.method_invocation import MethodInvocation
-from metacontroller.internal.namespace import (
+from metacontrollers.internal.exceptions import InvalidControllerMethodError
+from metacontrollers.internal.method_invocation import MethodInvocation
+from metacontrollers.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CHOSEN_ARG_NAME,

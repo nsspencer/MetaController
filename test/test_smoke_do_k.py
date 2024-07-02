@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from metacontroller import DoK
+from metacontrollers import DoK
 
 
 class TestDoKSmoke(unittest.TestCase):

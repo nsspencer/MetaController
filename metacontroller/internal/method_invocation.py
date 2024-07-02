@@ -1,8 +1,8 @@
 import ast
 from typing import List, Tuple
 
-from metacontroller.internal.method_inspector import MethodInspector
-from metacontroller.internal.namespace import CLASS_ARG_NAME
+from metacontrollers.internal.method_inspector import MethodInspector
+from metacontrollers.internal.namespace import CLASS_ARG_NAME
 
 
 class MethodInvocation:

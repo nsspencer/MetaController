@@ -2,12 +2,12 @@ import ast
 from functools import cmp_to_key
 from typing import Any, Callable
 
-from metacontroller.internal.exceptions import (
+from metacontrollers.internal.exceptions import (
     InvalidControllerMethodError,
     InvalidReturnError,
 )
-from metacontroller.internal.method_invocation import MethodInvocation
-from metacontroller.internal.namespace import (
+from metacontrollers.internal.method_invocation import MethodInvocation
+from metacontrollers.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     CLASS_ARG_NAME,

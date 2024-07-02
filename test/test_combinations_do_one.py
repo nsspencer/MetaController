@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from metacontroller import DoOne
+from metacontrollers import DoOne
 
 
 class TestDoOneMethodCombinations(unittest.TestCase):

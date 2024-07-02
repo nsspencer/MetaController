@@ -3,12 +3,12 @@ from abc import ABC, abstractmethod
 from textwrap import dedent
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-from metacontroller.internal.exceptions import (
+from metacontrollers.internal.exceptions import (
     ArgumentError,
     InvalidControllerMethodError,
 )
-from metacontroller.internal.method_inspector import MethodInspector
-from metacontroller.internal.namespace import (
+from metacontrollers.internal.method_inspector import MethodInspector
+from metacontrollers.internal.namespace import (
     ACTION_METHOD_NAME,
     CLASS_ARG_NAME,
     FILTER_METHOD_NAME,

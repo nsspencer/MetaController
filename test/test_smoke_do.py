@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 
-from metacontroller import Do
+from metacontrollers import Do
 
 TEST_GLOBAL = False
 

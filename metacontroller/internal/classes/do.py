@@ -2,8 +2,8 @@ import ast
 import warnings
 from typing import Any, Callable
 
-from metacontroller.internal.method_invocation import MethodInvocation
-from metacontroller.internal.namespace import (
+from metacontrollers.internal.method_invocation import MethodInvocation
+from metacontrollers.internal.namespace import (
     ACTION_METHOD_NAME,
     ACTION_RESULT_ASSIGNMENT_NAME,
     GENERATED_CALL_METHOD_NAME,
