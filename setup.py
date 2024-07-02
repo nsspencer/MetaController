@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="metacontrollers",
-    version="0.1.1",
+    version="0.1.2",
     author="Nathan Spencer",
     author_email="nathanss1997@gmail.com",
     description="A Python library for decoupling logic, modeling dynamic systems, and writing more declarative software.",
